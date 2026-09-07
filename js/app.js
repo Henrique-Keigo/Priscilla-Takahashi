@@ -391,7 +391,7 @@
             "</div>" +
             '<button data-onclick="' + goCatA + '" class="btn btn-secondary" style="padding:10px 18px">Ver o catálogo completo →</button>' +
           "</div>" +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent)">' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:40px 32px">' +
             featured.map(function (p) { return cardHTML(p, { aspect: "4/5", titleSize: "22px" }); }).join("") +
           "</div>" +
         "</div>" +
@@ -420,7 +420,7 @@
 
         '<div style="max-width:1440px;margin:0 auto;padding:clamp(48px,6vw,80px) clamp(18px,4vw,56px)">' +
           '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:26px">Onde atuamos</div>' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent)">' + bairroCards + "</div>" +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:36px 28px">' + bairroCards + "</div>" +
         "</div>" +
 
         '<div style="background:var(--color-accent);color:var(--color-bg)">' +
@@ -516,7 +516,7 @@
           '<button data-onclick="' + clearA + '" class="btn btn-ghost" style="font-size:12px">Limpar filtros</button>' +
         "</div>" +
 
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent)">' + grid + "</div>" +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:40px 32px">' + grid + "</div>" +
 
         (results.length === 0 ?
           '<div style="padding:70px 0;text-align:left;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
@@ -674,7 +674,7 @@
 
           (similar.length ? '<div style="margin-top:clamp(48px,6vw,86px);border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding-top:30px">' +
             '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:24px">Imóveis semelhantes</div>' +
-            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent)">' + similarHTML + "</div>" +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px 32px">' + similarHTML + "</div>" +
           "</div>" : "") +
         "</div>" +
       "</div>"
