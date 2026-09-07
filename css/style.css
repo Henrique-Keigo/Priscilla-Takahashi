@@ -155,9 +155,9 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
   100% { transform: translate(-50%,-50%) rotate(-45deg) scale(1); opacity: 1; }
 }
 @keyframes ptk-key-b-in {
-  0% { transform: translate(-50%,-50%) rotate(100deg) scale(.5); opacity: 0; }
+  0% { transform: translate(-50%,-50%) rotate(-190deg) scale(.5); opacity: 0; }
   55% { opacity: 1; }
-  100% { transform: translate(-50%,-50%) rotate(45deg) scale(1); opacity: 1; }
+  100% { transform: translate(-50%,-50%) rotate(-135deg) scale(1); opacity: 1; }
 }
 .ptk-loader-word {
   font-family: var(--font-heading); font-weight: 500; font-size: 12px; letter-spacing: .3em; text-transform: uppercase;
@@ -170,7 +170,7 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 @media (prefers-reduced-motion: reduce) {
   .ptk-key, .ptk-loader-word, .ptk-loader-bar-fill { animation: none !important; opacity: 1 !important; }
   .ptk-key-a { transform: translate(-50%,-50%) rotate(-45deg) scale(1); }
-  .ptk-key-b { transform: translate(-50%,-50%) rotate(45deg) scale(1); }
+  .ptk-key-b { transform: translate(-50%,-50%) rotate(-135deg) scale(1); }
   .ptk-loader-bar-fill { width: 100% !important; }
 }
 
