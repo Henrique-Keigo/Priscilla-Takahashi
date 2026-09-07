@@ -372,7 +372,7 @@
     return (
       '<div>' +
         '<div style="position:relative;width:100%;height:min(88vh,860px);min-height:520px;overflow:hidden;background:var(--color-neutral-900)">' +
-          '<div class="grayscale" style="position:absolute;inset:0">' + photoImg("images/hero-fachada.webp") + "</div>" +
+          '<div style="position:absolute;inset:0">' + photoImg("images/hero-fachada.webp") + "</div>" +
           '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(20,18,17,.72) 0%,rgba(20,18,17,.38) 48%,rgba(20,18,17,0) 78%);pointer-events:none"></div>' +
           '<div style="position:absolute;inset:0;display:flex;align-items:flex-end;pointer-events:none">' +
             '<div style="max-width:1440px;margin:0 auto;width:100%;padding:0 clamp(18px,4vw,56px) clamp(28px,4vw,64px)">' +
