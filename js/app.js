@@ -69,11 +69,6 @@
     draft: null,
     dragFrom: null,
     wm: { src: "images/icone-chaves-branco.png", name: "icone-chaves-branco.png (padrão da marca)", on: true, op: 18, scale: 22, pos: "center" },
-    leads: [
-      { id: "l1", nome: "Helena Braga", tel: "(12) 9 8812-4407", email: "helena.braga@email.com", interesse: "Comprar", imovel: "Cobertura no Aquarius", data: "31 ago", msg: "Gostaria de ver na quinta de manhã, se possível.", situacao: "Novo" },
-      { id: "l2", nome: "Rodrigo Sant'Anna", tel: "(12) 9 9140-2255", email: "rsantanna@email.com", interesse: "Vender", imovel: "—", data: "28 ago", msg: "Tenho uma casa no Jardim Oswaldo Cruz, queria avaliar.", situacao: "Respondido" },
-      { id: "l3", nome: "Camila e Théo", tel: "(11) 9 7788-1120", email: "camila.t@email.com", interesse: "Alugar", imovel: "Casa no Altos da Serra", data: "24 ago", msg: "Temos dois cachorros — a casa aceita?", situacao: "Visita marcada" }
-    ],
     lead: { nome: "", tel: "", email: "", interesse: "Comprar", msg: "" },
     visitaOpen: false,
     toast: ""
@@ -86,14 +81,13 @@
       var s = JSON.parse(raw);
       if (Array.isArray(s.props) && s.props.length) state.props = s.props.map(function (p) { return Object.assign({}, p, { photos: p.photos || [] }); });
       if (s.favs) state.favs = s.favs;
-      if (s.leads) state.leads = s.leads;
       if (s.wm) state.wm = Object.assign({}, state.wm, s.wm);
     } catch (e) {}
   }
 
   function persist() {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ props: state.props, favs: state.favs, leads: state.leads, wm: state.wm }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ props: state.props, favs: state.favs, wm: state.wm }));
     } catch (e) {}
   }
 
@@ -772,21 +766,14 @@
     };
   }
 
-  function sendLeadFrom(imovel, closeDialog) {
+  function sendLeadFrom(closeDialog) {
     return A(function () {
       var l = state.lead;
       if (!l.nome && !l.tel && !l.email) { toast("Deixe pelo menos um nome ou telefone"); return; }
-      var rec = {
-        id: uid("l"), nome: l.nome || "Sem nome", tel: l.tel || "—", email: l.email || "—",
-        interesse: l.interesse || "Comprar", imovel: imovel || "—",
-        data: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
-        msg: l.msg || "", situacao: "Novo"
-      };
-      state.leads = [rec].concat(state.leads);
       state.lead = { nome: "", tel: "", email: "", interesse: "Comprar", msg: "" };
       if (closeDialog) state.visitaOpen = false;
-      persist(); render();
-      toast("Mensagem enviada — respondemos em breve");
+      render();
+      toast("Mensagem enviada — responda pelo WhatsApp para agilizar");
     });
   }
 
@@ -806,7 +793,7 @@
     }).join("");
 
     var hl = leadFieldActions();
-    var sendA = sendLeadFrom("—", false);
+    var sendA = sendLeadFrom(false);
     var l = state.lead;
 
     return (
@@ -846,7 +833,7 @@
   /* ============================== Painel administrativo ============================== */
 
   function adminHTML() {
-    var tabs = [["dash", "Dashboard"], ["form", "Cadastro"], ["marca", "Marca-d'água"], ["leads", "Contatos"]];
+    var tabs = [["dash", "Dashboard"], ["form", "Cadastro"], ["marca", "Marca-d'água"]];
     var goHomeA = go("home");
     var tabsHTML = tabs.map(function (t) {
       var k = t[0], l = t[1];
@@ -859,7 +846,6 @@
     if (state.adminTab === "dash") body = adminDashHTML();
     else if (state.adminTab === "form") body = adminFormHTML();
     else if (state.adminTab === "marca") body = adminMarcaHTML();
-    else if (state.adminTab === "leads") body = adminLeadsHTML();
 
     return (
       '<div>' +
@@ -877,9 +863,7 @@
 
   function adminDashHTML() {
     var rascunhos = state.props.filter(function (x) { return x.status === "rascunho"; }).length;
-    var novos = state.leads.filter(function (l) { return l.situacao === "Novo"; }).length;
     var startNewA = A(function () { state.draft = blankDraft(); state.adminTab = "form"; render(); window.scrollTo(0, 0); });
-    var goLeadsA = A(function () { state.adminTab = "leads"; render(); });
 
     var counts = [["ativo", "Ativos"], ["vendido", "Vendidos"], ["alugado", "Alugados"], ["rascunho", "Rascunhos"]].map(function (kl) {
       var n = state.props.filter(function (x) { return x.status === kl[0]; }).length;
@@ -919,34 +903,20 @@
       "</tr>";
     }).join("");
 
-    var leadRows = state.leads.slice(0, 4).map(function (l) {
-      return '<div style="padding:14px 0;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
-        '<div style="display:flex;justify-content:space-between;gap:12px"><span style="font-family:var(--font-heading);font-weight:500;font-size:13.5px">' + esc(l.nome) + '</span><span style="font-size:11px;color:color-mix(in srgb,var(--color-text) 45%,transparent)">' + esc(l.data) + "</span></div>" +
-        '<div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 60%,transparent);margin-top:3px">' + esc(l.interesse) + " · " + esc(l.imovel) + "</div>" +
-      "</div>";
-    }).join("");
-
     return (
       '<div>' +
         '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:30px">' +
           "<div><h1 style=\"margin:0 0 6px;font-size:clamp(26px,3.2vw,40px);letter-spacing:-0.03em\">Bom te ver, " + esc(BRAND.split(" ")[0]) + ".</h1>" +
-          '<p style="margin:0;font-size:14px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">' + rascunhos + " rascunho(s) esperando você e " + novos + " contato(s) novo(s).</p></div>" +
+          '<p style="margin:0;font-size:14px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">' + rascunhos + " rascunho(s) esperando você.</p></div>" +
           '<button data-onclick="' + startNewA + '" class="btn btn-primary" style="padding:12px 20px;justify-content:flex-start">＋ Cadastrar imóvel</button>' +
         "</div>" +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + counts + "</div>" +
-        '<div style="display:flex;flex-wrap:wrap;gap:clamp(24px,3vw,44px);margin-top:44px;align-items:flex-start">' +
-          '<div style="flex:1 1 520px;min-width:0">' +
-            '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">' +
-              '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent)">Seus imóveis</div>' +
-              '<span style="font-size:12px;color:color-mix(in srgb,var(--color-text) 50%,transparent)">' + state.props.length + " no total</span>" +
-            "</div>" +
-            '<div style="overflow-x:auto"><table class="table"><thead><tr><th>Imóvel</th><th>Bairro</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
+        '<div style="margin-top:44px">' +
+          '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">' +
+            '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent)">Seus imóveis</div>' +
+            '<span style="font-size:12px;color:color-mix(in srgb,var(--color-text) 50%,transparent)">' + state.props.length + " no total</span>" +
           "</div>" +
-          '<div style="flex:1 1 300px">' +
-            '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:14px">Últimos contatos</div>' +
-            '<div style="border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + leadRows + "</div>" +
-            '<button data-onclick="' + goLeadsA + '" class="btn btn-ghost" style="font-size:12px;margin-top:12px">Ver todos os contatos →</button>' +
-          "</div>" +
+          '<div style="overflow-x:auto"><table class="table"><thead><tr><th>Imóvel</th><th>Bairro</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
         "</div>" +
       "</div>"
     );
@@ -1275,36 +1245,6 @@
     );
   }
 
-  function adminLeadsHTML() {
-    var rows = state.leads.map(function (l) {
-      var setSitA = A(function (e) {
-        var v = e.target.value;
-        state.leads = state.leads.map(function (y) { return y.id === l.id ? Object.assign({}, y, { situacao: v }) : y; });
-        persist(); render();
-      });
-      return "<tr>" +
-        '<td><div style="font-family:var(--font-heading);font-weight:500;font-size:13.5px">' + esc(l.nome) + '</div><div style="font-size:11.5px;color:color-mix(in srgb,var(--color-text) 52%,transparent);max-width:34ch">' + esc(l.msg) + "</div></td>" +
-        '<td style="font-size:13px">' + esc(l.tel) + '<div style="font-size:11.5px;color:color-mix(in srgb,var(--color-text) 52%,transparent)">' + esc(l.email) + "</div></td>" +
-        '<td style="font-size:13px">' + esc(l.interesse) + "</td>" +
-        '<td style="font-size:13px">' + esc(l.imovel) + "</td>" +
-        '<td style="font-size:12.5px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">' + esc(l.data) + "</td>" +
-        '<td><select class="input" data-onchange="' + setSitA + '" style="min-width:130px;font-size:12.5px">' +
-          ["Novo", "Respondido", "Visita marcada", "Encerrado"].map(function (s) { return '<option value="' + s + '"' + (l.situacao === s ? " selected" : "") + ">" + s + "</option>"; }).join("") +
-        "</select></td>" +
-      "</tr>";
-    }).join("");
-
-    return (
-      '<div>' +
-        '<div style="padding-bottom:20px;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
-          '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:10px">Contatos</div>' +
-          '<h1 style="margin:0;font-size:clamp(24px,3vw,36px);letter-spacing:-0.03em">' + state.leads.length + " contatos recebidos</h1>" +
-        "</div>" +
-        '<div style="overflow-x:auto;padding-top:22px"><table class="table"><thead><tr><th>Pessoa</th><th>Contato</th><th>Interesse</th><th>Imóvel</th><th>Recebido</th><th>Situação</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
-      "</div>"
-    );
-  }
-
   /* ============================== Diálogo de visita / Toast ============================== */
 
   function visitaDialogHTML() {
@@ -1312,7 +1252,7 @@
     var p = openProperty();
     var closeA = A(function () { state.visitaOpen = false; render(); });
     var hl = leadFieldActions();
-    var sendA = sendLeadFrom(p ? p.titulo : "—", true);
+    var sendA = sendLeadFrom(true);
     var l = state.lead;
     return (
       '<div class="dialog-backdrop" style="z-index:200;animation:fadein .2s both">' +
