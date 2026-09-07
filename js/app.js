@@ -200,7 +200,34 @@
   }
 
   function blankDraft() {
-    return { id: "", titulo: "", desc: "", desc2: "", tipo: "Casa", modo: "Venda", preco: "", endereco: "", bairro: "", area: "", quartos: "", banheiros: "", vagas: "", status: "rascunho", etiquetas: "", obs: "", feats: [], photos: [], coverIdx: 0 };
+    return { id: "", titulo: "", desc: "", desc2: "", tipo: "Casa", modo: "Venda", preco: "", cep: "", endereco: "", bairro: "", area: "", quartos: "", banheiros: "", vagas: "", status: "rascunho", etiquetas: "", obs: "", feats: [], photos: [], coverIdx: 0 };
+  }
+
+  var cepLookupTimer = null;
+  function onCepInput(e) {
+    var digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+    var masked = digits.length > 5 ? digits.slice(0, 5) + "-" + digits.slice(5) : digits;
+    state.draft = state.draft || blankDraft();
+    state.draft.cep = masked;
+    e.target.value = masked;
+    clearTimeout(cepLookupTimer);
+    if (digits.length === 8) {
+      cepLookupTimer = setTimeout(function () { lookupCep(digits); }, 300);
+    }
+  }
+
+  function lookupCep(digits) {
+    toast("Buscando endereço do CEP...");
+    fetch("https://viacep.com.br/ws/" + digits + "/json/")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!state.draft || data.erro) { toast("CEP não encontrado"); return; }
+        if (data.logradouro) state.draft.endereco = data.logradouro;
+        if (data.bairro) state.draft.bairro = data.bairro;
+        render();
+        toast("Endereço preenchido a partir do CEP");
+      })
+      .catch(function () { toast("Não foi possível buscar esse CEP agora"); });
   }
 
   /* ============================== Componentes de template ============================== */
@@ -552,7 +579,9 @@
     var isFav = state.favs.indexOf(p.id) !== -1;
     var gal = galleryOf(p);
     var wa = waLinkFor("Olá! Tenho interesse no imóvel " + p.titulo + " (ref. " + p.id.toUpperCase() + ").");
-    var mapLink = "https://www.google.com/maps/search/" + encodeURIComponent(p.endereco + ", " + p.bairro + ", " + CIDADE);
+    var mapQuery = encodeURIComponent(p.endereco + ", " + p.bairro + ", " + CIDADE);
+    var mapLink = "https://www.google.com/maps/search/" + mapQuery;
+    var mapEmbed = "https://maps.google.com/maps?q=" + mapQuery + "&t=&z=15&ie=UTF8&output=embed";
 
     var goCatA = go("catalogo");
     var favA = toggleFav(p.id);
@@ -642,8 +671,8 @@
               '<div style="margin-top:28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + specList + "</div>" +
               '<div style="margin-top:44px">' +
                 '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:18px">Sobre o imóvel</div>' +
-                '<p style="font-size:17px;line-height:1.62;max-width:62ch;color:color-mix(in srgb,var(--color-text) 88%,transparent)">' + esc(p.desc || "Descrição em preparação — fale com a corretora para detalhes.") + "</p>" +
-                (p.desc2 ? '<p style="font-size:15px;line-height:1.7;max-width:62ch;color:color-mix(in srgb,var(--color-text) 70%,transparent)">' + esc(p.desc2) + "</p>" : "") +
+                '<p style="font-size:17px;line-height:1.62;max-width:62ch;overflow-wrap:anywhere;color:color-mix(in srgb,var(--color-text) 88%,transparent)">' + esc(p.desc || "Descrição em preparação — fale com a corretora para detalhes.") + "</p>" +
+                (p.desc2 ? '<p style="font-size:15px;line-height:1.7;max-width:62ch;overflow-wrap:anywhere;color:color-mix(in srgb,var(--color-text) 70%,transparent)">' + esc(p.desc2) + "</p>" : "") +
               "</div>" +
               (feats ? '<div style="margin-top:44px"><div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:18px">Diferenciais</div>' +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + feats + "</div></div>" : "") +
@@ -651,11 +680,7 @@
                 '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:18px">Localização</div>' +
                 '<div style="border:1px solid color-mix(in srgb,var(--color-text) 14%,transparent);background:var(--color-surface)">' +
                   '<div style="position:relative;height:280px;overflow:hidden;background:var(--color-surface)">' +
-                    '<div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 46px,color-mix(in srgb,var(--color-text) 10%,transparent) 46px 48px),repeating-linear-gradient(90deg,transparent 0 46px,color-mix(in srgb,var(--color-text) 10%,transparent) 46px 48px)"></div>' +
-                    '<div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:6px">' +
-                      '<span style="background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-weight:500;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;white-space:nowrap">' + esc(p.bairro) + "</span>" +
-                      '<span style="width:2px;height:22px;background:var(--color-accent)"></span>' +
-                    "</div>" +
+                    '<iframe src="' + esc(mapEmbed) + '" style="position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(.3) contrast(1.05)" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Mapa aproximado do imóvel"></iframe>' +
                   "</div>" +
                   '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;padding:16px 18px;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);background:var(--color-bg)">' +
                     '<span style="font-size:13px;color:color-mix(in srgb,var(--color-text) 70%,transparent)">' + esc(p.endereco) + " — referência aproximada, endereço exato na visita.</span>" +
@@ -1116,6 +1141,9 @@
             "<div>" +
               '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:16px">Endereço e medidas</div>' +
               '<div style="display:grid;gap:14px">' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px">' +
+                  '<div class="field"><label>CEP</label><input class="input" inputmode="numeric" data-oninput="' + A(onCepInput) + '" value="' + esc(d2.cep) + '" placeholder="12210-000"><div style="font-size:11px;margin-top:5px;color:color-mix(in srgb,var(--color-text) 52%,transparent)">Preenche endereço e bairro automaticamente</div></div>' +
+                "</div>" +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">' +
                   '<div class="field"><label>Endereço / referência</label><input class="input" data-oninput="' + setDraftField("endereco", false) + '" value="' + esc(d2.endereco) + '" placeholder="Rua das Andorinhas, 240"></div>' +
                   '<div class="field"><label>Bairro</label><input class="input" data-oninput="' + setDraftField("bairro", true) + '" value="' + esc(d2.bairro) + '" placeholder="Urbanova"></div>' +
