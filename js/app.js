@@ -71,17 +71,24 @@
     wm: { src: "images/icone-chaves-branco.png", name: "icone-chaves-branco.png (padrão da marca)", on: true, op: 18, scale: 22, pos: "center" },
     lead: { nome: "", tel: "", email: "", interesse: "Comprar", msg: "" },
     visitaOpen: false,
-    toast: ""
+    toast: "",
+    cookiesOk: false
   };
+
+  var COOKIE_KEY = "ptk.cookies.v1";
 
   function loadState() {
     try {
       var raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return;
-      var s = JSON.parse(raw);
-      if (Array.isArray(s.props) && s.props.length) state.props = s.props.map(function (p) { return Object.assign({}, p, { photos: p.photos || [] }); });
-      if (s.favs) state.favs = s.favs;
-      if (s.wm) state.wm = Object.assign({}, state.wm, s.wm);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (Array.isArray(s.props) && s.props.length) state.props = s.props.map(function (p) { return Object.assign({}, p, { photos: p.photos || [] }); });
+        if (s.favs) state.favs = s.favs;
+        if (s.wm) state.wm = Object.assign({}, state.wm, s.wm);
+      }
+    } catch (e) {}
+    try {
+      state.cookiesOk = localStorage.getItem(COOKIE_KEY) === "1";
     } catch (e) {}
   }
 
@@ -89,6 +96,12 @@
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({ props: state.props, favs: state.favs, wm: state.wm }));
     } catch (e) {}
+  }
+
+  function acceptCookies() {
+    state.cookiesOk = true;
+    try { localStorage.setItem(COOKIE_KEY, "1"); } catch (e) {}
+    render();
   }
 
   var toastTimer = null;
@@ -284,7 +297,7 @@
 
   function footerHTML() {
     if (state.route === "admin") return "";
-    var goCatA = go("catalogo"), goSobreA = go("sobre"), goServA = go("servicos"), goContA = go("contato");
+    var goCatA = go("catalogo"), goSobreA = go("sobre"), goServA = go("servicos"), goContA = go("contato"), goTermosA = go("termos");
     var wa = waLinkFor("Olá! Vi o site da " + BRAND + " e queria falar com você.");
     return (
       '<div style="border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);background:var(--color-bg)">' +
@@ -318,7 +331,10 @@
           '<div style="height:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);margin:32px 0 16px"></div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;font-size:11.5px;color:color-mix(in srgb,var(--color-text) 45%,transparent)">' +
             "<span>© 2026 " + esc(BRAND) + ". Todos os direitos reservados.</span>" +
-            "<span>Fotografia própria — marca-d'água aplicada automaticamente.</span>" +
+            '<span style="display:flex;flex-wrap:wrap;gap:6px 16px">' +
+              '<a href="#" data-onclick="' + goTermosA + '" style="color:inherit">Termos de uso</a>' +
+              '<a href="#" data-onclick="' + goTermosA + '" style="color:inherit">Privacidade e cookies</a>' +
+            "</span>" +
           "</div>" +
         "</div>" +
       "</div>"
@@ -403,9 +419,9 @@
                 '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:20px">O método</div>' +
                 '<h2 style="margin:0 0 22px;font-size:clamp(26px,3vw,38px);letter-spacing:-0.025em;line-height:1.08;max-width:14em">Poucos imóveis por vez. Cada um visitado, fotografado e escrito por nós.</h2>' +
                 '<p style="max-width:44ch;font-size:15px;line-height:1.7;color:color-mix(in srgb,var(--color-text) 78%,transparent)">Não trabalhamos com volume. Cada endereço entra no catálogo depois de uma visita técnica, uma sessão de fotografia dedicada e uma conversa longa com quem vende. É por isso que a descrição diz o que você precisa saber — e também o que não é perfeito.</p>' +
-                '<div style="margin-top:34px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent)">' +
+                '<div style="margin-top:34px;margin-left:-18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent)">' +
                   metodo.map(function (m) {
-                    return '<div style="background:var(--color-bg);padding:18px 18px 18px 0">' +
+                    return '<div style="background:var(--color-bg);padding:18px">' +
                       '<div style="font-family:var(--font-heading);font-weight:500;font-size:13px;color:var(--color-accent);margin-bottom:6px">' + m.n + "</div>" +
                       '<div style="font-family:var(--font-heading);font-weight:500;font-size:15px;margin-bottom:4px">' + m.t + "</div>" +
                       '<div style="font-size:12.5px;line-height:1.5;color:color-mix(in srgb,var(--color-text) 62%,transparent)">' + m.d + "</div>" +
@@ -568,7 +584,7 @@
       { v: p.banheiros || "—", l: "Banheiros" },
       { v: p.vagas || "—", l: "Vagas" }
     ].map(function (s) {
-      return '<div style="background:var(--color-bg);padding:20px 16px 20px 0">' +
+      return '<div style="background:var(--color-bg);padding:20px 16px">' +
         '<div style="font-family:var(--font-heading);font-weight:500;font-size:26px;line-height:1;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">' + esc(s.v) + "</div>" +
         '<div style="margin-top:7px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent)">' + s.l + "</div>" +
       "</div>";
@@ -692,7 +708,7 @@
       { n: "12", l: "Anos de mercado" },
       { n: "1", l: "Corretora responsável" }
     ].map(function (s) {
-      return '<div style="background:var(--color-bg);padding:22px 18px 22px 0">' +
+      return '<div style="background:var(--color-bg);padding:22px 18px">' +
         '<div style="font-family:var(--font-heading);font-weight:500;font-size:30px;line-height:1;letter-spacing:-0.02em">' + s.n + "</div>" +
         '<div style="margin-top:7px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent)">' + s.l + "</div>" +
       "</div>";
@@ -830,6 +846,50 @@
     );
   }
 
+  /* ============================== Página: Termos e privacidade ============================== */
+
+  function termosHTML() {
+    var wa = waLinkFor("Olá! Vi o site da " + BRAND + " e queria falar com você.");
+    var secoesTermos = [
+      { t: "O que é este site", d: "Este site é uma vitrine de imóveis selecionados por " + esc(BRAND) + ", " + esc(CRECI) + ". As informações de cada anúncio (preço, área, características) são fornecidas pelos proprietários ou levantadas em visita e podem mudar sem aviso prévio — confirme sempre os detalhes diretamente com a corretora antes de decidir." },
+      { t: "Fotos e conteúdo", d: "Fotografias, textos e a marca-d'água aplicada nas imagens pertencem a " + esc(BRAND) + " ou aos respectivos proprietários dos imóveis. Não é permitido copiar ou redistribuir esse material sem autorização." },
+      { t: "Sem garantia de disponibilidade", d: "Um imóvel exibido como \"Ativo\" pode já estar em negociação ou ter sido vendido/alugado no intervalo entre a última atualização do site e o seu acesso. O contato pelo WhatsApp é a forma mais rápida de confirmar a situação real." },
+      { t: "Uso aceitável", d: "Este catálogo é para uso pessoal de quem busca comprar, alugar ou vender um imóvel. Não utilize o site para extrair dados em massa, redistribuir o conteúdo comercialmente ou qualquer finalidade que não seja a consulta de imóveis." }
+    ];
+    var secoesPrivacidade = [
+      { t: "O que este site guarda no seu navegador", d: "Os imóveis favoritados, os filtros de busca e as preferências do painel administrativo (quando usado pela corretora) ficam salvos apenas no armazenamento local do seu próprio navegador (localStorage) — nada é enviado para um servidor ou compartilhado com terceiros." },
+      { t: "Cookies", d: "Usamos um único cookie/armazenamento local para lembrar que você já viu este aviso, evitando mostrá-lo de novo a cada visita. Não usamos cookies de rastreamento, publicidade ou analytics de terceiros." },
+      { t: "Formulário de contato e WhatsApp", d: "Ao enviar uma mensagem pelo formulário de contato ou pelo botão do WhatsApp, os dados (nome, telefone, e-mail, mensagem) vão diretamente para a conversa do WhatsApp ou são tratados manualmente pela corretora — não ficam armazenados neste site." },
+      { t: "Como limpar seus dados", d: "Para apagar favoritos e preferências salvos por este site, limpe os dados de navegação (\"cookies e dados de site\") do seu navegador para este domínio." },
+      { t: "Contato", d: "Dúvidas sobre estes termos ou sobre seus dados: " + esc(EMAIL) + " ou pelo WhatsApp " + esc(WHATSAPP) + "." }
+    ];
+
+    function secaoHTML(list) {
+      return list.map(function (s) {
+        return '<div style="padding:24px 0;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
+          '<h3 style="margin:0 0 8px;font-size:17px;letter-spacing:-0.01em">' + s.t + "</h3>" +
+          '<p style="margin:0;max-width:70ch;font-size:14.5px;line-height:1.7;color:color-mix(in srgb,var(--color-text) 74%,transparent)">' + s.d + "</p>" +
+        "</div>";
+      }).join("");
+    }
+
+    return (
+      '<div style="max-width:900px;margin:0 auto;padding:clamp(30px,4vw,64px) clamp(18px,4vw,56px) 90px">' +
+        '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:16px">Informações legais</div>' +
+        '<h1 style="margin:0;font-size:clamp(30px,4.4vw,50px);letter-spacing:-0.03em;line-height:1.02">Termos de uso e privacidade</h1>' +
+        '<p style="margin:16px 0 0;font-size:14px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Última atualização: 2026. Um resumo simples de como este site funciona e o que ele guarda sobre você.</p>' +
+
+        '<h2 style="margin:44px 0 0;font-size:22px;letter-spacing:-0.015em">Termos de uso</h2>' +
+        '<div style="margin-top:8px;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + secaoHTML(secoesTermos) + "</div>" +
+
+        '<h2 style="margin:44px 0 0;font-size:22px;letter-spacing:-0.015em">Privacidade e cookies</h2>' +
+        '<div style="margin-top:8px;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + secaoHTML(secoesPrivacidade) + "</div>" +
+
+        '<p style="margin-top:32px;font-size:13.5px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Prefere conversar em vez de ler? <a href="' + esc(wa) + '" target="_blank">Chame no WhatsApp</a>.</p>' +
+      "</div>"
+    );
+  }
+
   /* ============================== Painel administrativo ============================== */
 
   function adminHTML() {
@@ -867,7 +927,7 @@
 
     var counts = [["ativo", "Ativos"], ["vendido", "Vendidos"], ["alugado", "Alugados"], ["rascunho", "Rascunhos"]].map(function (kl) {
       var n = state.props.filter(function (x) { return x.status === kl[0]; }).length;
-      return '<div style="background:var(--color-bg);padding:26px 22px 24px 0">' +
+      return '<div style="background:var(--color-bg);padding:26px 22px 24px">' +
         '<div style="font-family:var(--font-heading);font-weight:500;font-size:40px;line-height:1;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">' + n + "</div>" +
         '<div style="margin-top:9px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">' + kl[1] + "</div>" +
       "</div>";
@@ -1280,6 +1340,18 @@
     return '<div id="toast-el" style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:300;background:var(--color-text);color:var(--color-bg);padding:13px 20px;font-size:13px;font-family:var(--font-heading);font-weight:500;letter-spacing:-0.01em;box-shadow:var(--shadow-lg);animation:rise .3s cubic-bezier(.2,.8,.2,1) both">' + esc(state.toast) + "</div>";
   }
 
+  function cookieBarHTML() {
+    if (state.cookiesOk) return "";
+    var okA = A(function () { acceptCookies(); });
+    var moreA = go("termos");
+    return (
+      '<div class="ptk-cookie-bar">' +
+        '<p>Usamos apenas um armazenamento local para lembrar seus favoritos e preferências — sem cookies de rastreamento ou publicidade. <a href="#" data-onclick="' + moreA + '">Saiba mais</a>.</p>' +
+        '<button data-onclick="' + okA + '" class="btn btn-primary" style="padding:10px 18px">Entendi</button>' +
+      "</div>"
+    );
+  }
+
   /* ============================== Render principal ============================== */
 
   function render() {
@@ -1292,11 +1364,12 @@
     else if (route === "sobre") page = sobreHTML();
     else if (route === "servicos") page = servicosHTML();
     else if (route === "contato") page = contatoHTML();
+    else if (route === "termos") page = termosHTML();
     else if (route === "admin") page = adminHTML();
 
     var html =
       '<div style="min-height:100vh;background:var(--color-bg);font-family:var(--font-body)">' +
-        headerHTML() + page + footerHTML() + visitaDialogHTML() + toastHTML() +
+        headerHTML() + page + footerHTML() + visitaDialogHTML() + toastHTML() + cookieBarHTML() +
       "</div>";
 
     document.getElementById("app").innerHTML = html;
@@ -1333,4 +1406,11 @@
   loadState();
   initEvents();
   render();
+
+  setTimeout(function () {
+    var loader = document.getElementById("ptk-loader");
+    if (!loader) return;
+    loader.classList.add("ptk-loader-hidden");
+    setTimeout(function () { loader.remove(); }, 550);
+  }, 1650);
 })();
