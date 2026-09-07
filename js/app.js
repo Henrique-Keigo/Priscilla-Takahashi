@@ -435,7 +435,7 @@
             '<button data-onclick="' + goCatA + '" class="btn btn-secondary" style="padding:10px 18px">Ver o catálogo completo →</button>' +
           "</div>" +
           '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:40px 32px">' +
-            featured.map(function (p) { return cardHTML(p, { aspect: "4/5", titleSize: "22px" }); }).join("") +
+            featured.map(function (p) { return cardHTML(p, { aspect: "3/2", titleSize: "18px" }); }).join("") +
           "</div>" +
         "</div>" +
 
