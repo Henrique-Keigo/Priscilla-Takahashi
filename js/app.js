@@ -134,6 +134,33 @@
 
   /* ============================== Navegação / lógica ============================== */
 
+  function readRoute() {
+    var key;
+    try { key = decodeURIComponent(location.hash.slice(1)); }
+    catch (e) { key = "invalid"; }
+    state.openId = null;
+    state.galIdx = 0;
+    state.visitaOpen = false;
+    if (!key || key === "home") state.route = "home";
+    else if (["catalogo", "sobre", "servicos", "contato", "termos", "admin"].indexOf(key) !== -1) state.route = key;
+    else {
+      var property = state.props.find(function (p) { return p.id === key && p.status !== "rascunho"; });
+      if (property) {
+        state.route = "imovel";
+        state.openId = property.id;
+      } else {
+        state.route = "catalogo";
+        state.toast = "Imóvel não encontrado ou indisponível.";
+      }
+    }
+  }
+
+  function syncRoute() {
+    var key = state.route === "imovel" ? state.openId : state.route === "home" ? "" : state.route;
+    var hash = key ? "#" + encodeURIComponent(key) : "";
+    if (location.hash !== hash) history.pushState(null, "", location.pathname + location.search + hash);
+  }
+
   function go(route) {
     return A(function (e) {
       if (e && e.preventDefault) e.preventDefault();
@@ -278,8 +305,8 @@
     var openA = openProp(p.id), favA = toggleFav(p.id);
     var titleSize = opts.titleSize || "18px";
     return (
-      '<div style="background:var(--color-bg);padding-bottom:' + (opts.pad || "22px") + '">' +
-        '<div style="position:relative;width:100%;aspect-ratio:' + aspect + ';overflow:hidden;background:var(--color-surface)">' +
+      '<div class="ptk-card" data-motion-key="card-' + esc(p.id) + '" style="background:var(--color-bg);padding-bottom:' + (opts.pad || "22px") + '">' +
+        '<div class="ptk-card-media" style="position:relative;width:100%;aspect-ratio:' + aspect + ';overflow:hidden;background:var(--color-surface)">' +
           '<div class="grayscale" style="position:absolute;inset:0">' + (cover ? photoImg(cover) : slotPh(p.bairro)) + "</div>" +
           wmOverlayHTML(1) +
           '<div style="position:absolute;left:0;top:0;display:flex;gap:2px;pointer-events:none">' +
@@ -291,7 +318,7 @@
         '<a href="#" data-onclick="' + openA + '" style="display:block;color:var(--color-text);padding:20px 0 0">' +
           '<div style="font-family:var(--font-heading);font-weight:500;font-size:' + titleSize + ';letter-spacing:-0.02em;line-height:1.14">' + esc(p.titulo) + "</div>" +
           '<div style="margin-top:6px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent)">' + esc(p.bairro) + " · " + esc(p.tipo) + "</div>" +
-          '<div style="margin-top:16px;display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding-top:14px">' +
+          '<div class="ptk-card-meta" style="border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding-top:14px">' +
             '<span style="font-family:var(--font-heading);font-weight:500;font-size:17px;font-variant-numeric:tabular-nums">' + esc(precoLabel(p)) + "</span>" +
             '<span style="font-size:12px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">' + esc(specs) + "</span>" +
           "</div>" +
@@ -440,34 +467,20 @@
     var goCatA = go("catalogo"), goContA = go("contato");
     var wa = waLinkFor("Olá! Vi o site da " + BRAND + " e queria falar com você.");
 
-    var bairroCards = bairros.slice(0, 4).map(function (b) {
-      var goA = A(function (e) { if (e) e.preventDefault(); state.route = "catalogo"; state.fl.loc = b; render(); window.scrollTo(0, 0); });
-      var qtd = ativos.filter(function (x) { return x.bairro === b; }).length;
-      return (
-        '<a href="#" data-onclick="' + goA + '" style="background:var(--color-bg);color:var(--color-text);display:block">' +
-          '<div class="grayscale" style="position:relative;width:100%;aspect-ratio:1/1;background:var(--color-surface)">' + slotPh(b) + "</div>" +
-          '<div style="padding:16px 16px 20px 0;display:flex;align-items:baseline;justify-content:space-between;gap:10px">' +
-            '<span style="font-family:var(--font-heading);font-weight:500;font-size:16px">' + esc(b) + "</span>" +
-            '<span style="font-size:11px;color:color-mix(in srgb,var(--color-text) 50%,transparent);font-variant-numeric:tabular-nums">' + qtd + " imóveis</span>" +
-          "</div>" +
-        "</a>"
-      );
-    }).join("");
-
     return (
       '<div>' +
-        '<div style="position:relative;width:100%;height:min(58vh,560px);min-height:400px;overflow:hidden;background:var(--color-neutral-900)">' +
+        '<div class="ptk-hero" style="position:relative;width:100%;height:min(58vh,560px);min-height:400px;overflow:hidden;background:var(--color-neutral-900)">' +
           '<div style="position:absolute;inset:0">' + photoImg("images/hero-fachada.webp") + "</div>" +
           '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(20,18,17,.72) 0%,rgba(20,18,17,.38) 48%,rgba(20,18,17,0) 78%);pointer-events:none"></div>' +
           '<div style="position:absolute;inset:0;display:flex;align-items:flex-end;pointer-events:none">' +
             '<div style="max-width:1440px;margin:0 auto;width:100%;padding:0 clamp(18px,4vw,56px) clamp(28px,4vw,64px)">' +
-              '<div style="max-width:760px;animation:rise .9s cubic-bezier(.2,.8,.2,1) both">' +
+              '<div class="ptk-hero-copy" style="max-width:760px">' +
                 '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">' +
                   '<span style="width:34px;height:2px;background:var(--color-accent)"></span>' +
                   '<span style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#f3f2f2">' + esc(CIDADE) + " · Vale do Paraíba</span>" +
                 "</div>" +
                 '<h1 style="margin:0;color:#f8f4f4;font-size:clamp(32px,4.8vw,64px);line-height:.98;letter-spacing:-0.03em;text-wrap:balance">Arquitetura<br>para se viver<br>devagar.</h1>' +
-                '<p style="margin:22px 0 0;max-width:440px;font-size:15px;line-height:1.6;color:rgba(248,244,244,.78)">Uma seleção curta de casas, coberturas e residências assinadas — apresentadas com o cuidado que elas merecem.</p>' +
+                '<p style="margin:22px 0 0;max-width:440px;font-size:15px;line-height:1.6;color:rgba(248,244,244,.78)">Casas, apartamentos e coberturas para diferentes momentos da vida, com informações claras e atendimento próximo.</p>' +
               "</div>" +
             "</div>" +
           "</div>" +
@@ -492,7 +505,7 @@
             "</div>" +
             '<button data-onclick="' + goCatA + '" class="btn btn-secondary" style="padding:10px 18px">Ver o catálogo completo →</button>' +
           "</div>" +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,380px));gap:40px 32px">' +
+          '<div class="ptk-property-grid">' +
             featured.map(function (p) { return cardHTML(p, { aspect: "3/2", titleSize: "18px" }); }).join("") +
           "</div>" +
         "</div>" +
@@ -512,11 +525,11 @@
             '<div style="display:flex;flex-wrap:wrap;align-items:stretch">' +
               '<div style="flex:1 1 420px;padding:clamp(40px,5vw,76px) clamp(24px,4vw,64px) clamp(40px,5vw,76px) 0">' +
                 '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:20px">O método</div>' +
-                '<h2 style="margin:0 0 22px;font-size:clamp(26px,3vw,38px);letter-spacing:-0.025em;line-height:1.08;max-width:14em">Poucos imóveis por vez. Cada um visitado, fotografado e escrito por nós.</h2>' +
-                '<p style="max-width:44ch;font-size:15px;line-height:1.7;color:color-mix(in srgb,var(--color-text) 78%,transparent)">Não trabalhamos com volume. Cada endereço entra no catálogo depois de uma visita técnica, uma sessão de fotografia dedicada e uma conversa longa com quem vende. É por isso que a descrição diz o que você precisa saber — e também o que não é perfeito.</p>' +
-                '<div style="margin-top:34px;margin-left:-18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent)">' +
+                '<h2 style="margin:0 0 22px;font-size:clamp(26px,3vw,38px);letter-spacing:-0.025em;line-height:1.08;max-width:14em">Cuidado em cada detalhe. Do primeiro olhar à sua decisão.</h2>' +
+                '<p style="max-width:44ch;font-size:15px;line-height:1.7;color:color-mix(in srgb,var(--color-text) 78%,transparent)">Conhecer o imóvel faz parte do nosso trabalho. A visita técnica, as fotografias e a conversa com quem vende ajudam a apresentar cada endereço com clareza, destacando suas qualidades e os pontos que merecem atenção.</p>' +
+                '<div class="ptk-method-steps">' +
                   metodo.map(function (m) {
-                    return '<div style="background:var(--color-bg);padding:18px">' +
+                    return '<div class="ptk-method-step">' +
                       '<div style="font-family:var(--font-heading);font-weight:500;font-size:13px;color:var(--color-accent);margin-bottom:6px">' + m.n + "</div>" +
                       '<div style="font-family:var(--font-heading);font-weight:500;font-size:15px;margin-bottom:4px">' + m.t + "</div>" +
                       '<div style="font-size:12.5px;line-height:1.5;color:color-mix(in srgb,var(--color-text) 62%,transparent)">' + m.d + "</div>" +
@@ -524,15 +537,12 @@
                   }).join("") +
                 "</div>" +
               "</div>" +
-              '<div class="grayscale" style="flex:1 1 380px;min-height:440px;position:relative;border-left:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + slotPh("Interior") + "</div>" +
+              '<div style="flex:1 1 380px;min-height:440px;position:relative;overflow:hidden"><img src="images/metodo-interior.png" alt="Interior ilustrativo com luz natural, madeira e tons quentes" loading="lazy" style="position:absolute;width:100%;height:100%;object-fit:cover;object-position:center"></div>' +
             "</div>" +
           "</div>" +
         "</div>" +
 
-        '<div style="max-width:1440px;margin:0 auto;padding:clamp(48px,6vw,80px) clamp(18px,4vw,56px)">' +
-          '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:26px">Onde atuamos</div>' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,300px));gap:36px 28px">' + bairroCards + "</div>" +
-        "</div>" +
+
 
         '<div style="background:var(--color-accent);color:var(--color-bg)">' +
           '<div style="max-width:1440px;margin:0 auto;padding:clamp(46px,6vw,86px) clamp(18px,4vw,56px);display:flex;flex-wrap:wrap;gap:40px;align-items:flex-end;justify-content:space-between">' +
@@ -627,7 +637,7 @@
           '<button data-onclick="' + clearA + '" class="btn btn-ghost" style="font-size:12px">Limpar filtros</button>' +
         "</div>" +
 
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,360px));gap:40px 32px">' + grid + "</div>" +
+        '<div class="ptk-property-grid">' + grid + "</div>" +
 
         (results.length === 0 ?
           '<div style="padding:70px 0;text-align:left;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
@@ -653,14 +663,18 @@
     var favA = toggleFav(p.id);
     var shareA = A(function () {
       var url = location.href.split("#")[0] + "#" + p.id;
-      if (navigator.clipboard) navigator.clipboard.writeText(url).catch(function () {});
-      toast("Link do imóvel copiado");
+      function manualCopy() { window.prompt("Copie o link deste imóvel:", url); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          toast("Link do imóvel copiado");
+        }).catch(manualCopy);
+      } else manualCopy();
     });
     var prevA = galStep(-1), nextA = galStep(1);
 
     var slides = gal.map(function (g, i) {
       var active = i === state.galIdx;
-      return '<div style="position:absolute;inset:0;opacity:' + (active ? 1 : 0) + ';transition:opacity .6s cubic-bezier(.4,0,.2,1);z-index:' + (active ? 2 : 1) + ';pointer-events:' + (active ? "auto" : "none") + '">' +
+      return '<div class="ptk-slide' + (active ? ' ptk-slide-active' : '') + '" style="position:absolute;inset:0;opacity:' + (active ? 1 : 0) + ';transition:opacity .6s cubic-bezier(.4,0,.2,1);z-index:' + (active ? 2 : 1) + ';pointer-events:' + (active ? "auto" : "none") + '">' +
         '<div class="grayscale" style="position:absolute;inset:0">' + (g.isPhoto ? photoImg(g.src) : slotPh("Foto " + (i + 1))) + "</div>" +
       "</div>";
     }).join("");
@@ -802,19 +816,18 @@
 
     return (
       '<div style="max-width:1440px;margin:0 auto;padding:clamp(30px,4vw,64px) clamp(18px,4vw,56px) 90px">' +
-        '<div style="max-width:20ch">' +
+        '<div style="width:100%;max-width:1100px">' +
           '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:16px">Sobre</div>' +
-          '<h1 style="margin:0;font-size:clamp(34px,5.6vw,78px);line-height:.97;letter-spacing:-0.035em">Uma corretora, um catálogo curto.</h1>' +
+          '<h1 style="margin:0;font-size:clamp(34px,5.2vw,72px);line-height:1.08;letter-spacing:-0.035em;text-wrap:balance">Seu próximo imóvel começa com uma boa conversa.</h1>' +
         "</div>" +
         '<div style="height:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);margin:44px 0"></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:clamp(28px,4vw,64px)">' +
           '<div style="flex:1 1 420px">' +
             '<p style="font-size:18px;line-height:1.6;max-width:56ch">Este escritório nasceu de uma inconformidade simples: imóveis bonitos sendo anunciados com fotos ruins e textos copiados. Trabalhamos no contrário disso.</p>' +
-            '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Somos um escritório pequeno em ' + esc(CIDADE) + ', dedicado a residências com projeto — casas de arquiteto no Urbanova, coberturas reformadas com critério no Aquarius, apartamentos em edifícios que envelhecem bem. Aceitamos poucos imóveis por vez porque cada um recebe visita técnica, fotografia própria e um texto escrito à mão.</p>' +
+            '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Atuamos em ' + esc(CIDADE) + ' e no Vale do Paraíba, aproximando pessoas de imóveis que combinam com seus planos. Nosso trabalho une conhecimento da região, atenção às suas necessidades e informações claras para acompanhar você na compra, venda ou locação.</p>' +
             '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Para quem compra, isso significa nunca perder uma tarde numa visita que não fazia sentido. Para quem vende, significa um anúncio que atrai a pessoa certa em vez de dez curiosos.</p>' +
             '<div style="margin-top:36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + stats + "</div>" +
           "</div>" +
-          '<div class="grayscale" style="flex:1 1 360px;min-height:520px;position:relative;background:var(--color-surface)">' + slotPh("Retrato") + "</div>" +
         "</div>" +
       "</div>"
     );
@@ -824,7 +837,7 @@
 
   function servicosHTML() {
     var servicos = [
-      { n: "01", t: "Venda com curadoria", d: "Aceitamos poucos imóveis por vez. Cada anúncio recebe visita técnica, sessão de fotografia e texto próprio — e um plano de divulgação combinado com você antes de publicar.", tags: ["Fotografia inclusa", "Texto autoral", "Plano de mídia"] },
+      { n: "01", t: "Venda com acompanhamento", d: "Apresentamos seu imóvel com visita técnica, sessão de fotografia e descrição detalhada, além de um plano de divulgação combinado com você antes da publicação.", tags: ["Fotografia inclusa", "Texto autoral", "Plano de mídia"] },
       { n: "02", t: "Locação anual e de temporada", d: "Cuidamos da triagem de candidatos, da vistoria de entrada e do contrato. Você recebe um relatório de cada visita, com o que agradou e o que travou a negociação.", tags: ["Triagem", "Vistoria", "Contrato"] },
       { n: "03", t: "Avaliação de valor", d: "Estudo comparativo com transações reais do bairro nos últimos doze meses, não com anúncios. Entregue em PDF, em até cinco dias úteis.", tags: ["Comparativo real", "PDF", "5 dias"] },
       { n: "04", t: "Busca dirigida", d: "Para quem procura algo que não está no mercado. Mapeamos o bairro, batemos na porta e negociamos direto com proprietários.", tags: ["Off-market", "Negociação direta"] }
@@ -1444,7 +1457,53 @@
 
   /* ============================== Render principal ============================== */
 
+  var motionObserver = null;
+  var motionSeen = new Set();
+  var lastMotionPage = "";
+  var lastMotionSlide = "";
+
+  function initMotion() {
+    if (motionObserver) motionObserver.disconnect();
+    var page = document.getElementById("ptk-page");
+    var loader = document.getElementById("ptk-loader");
+    if (!page || (loader && !loader.classList.contains("ptk-loader-hidden"))) return;
+    var pageKey = state.route + ":" + (state.openId || "");
+    var changedPage = pageKey !== lastMotionPage;
+    lastMotionPage = pageKey;
+    var slideKey = pageKey + ":" + state.galIdx;
+    var changedSlide = slideKey !== lastMotionSlide;
+    lastMotionSlide = slideKey;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || state.route === "admin") return;
+    if (changedPage) {
+      page.classList.add("ptk-page-enter");
+      var hero = page.querySelector(".ptk-hero");
+      if (hero) hero.classList.add("ptk-hero-enter");
+    }
+    if (changedSlide) {
+      var slide = page.querySelector(".ptk-slide-active");
+      if (slide) slide.classList.add("ptk-slide-enter");
+    }
+    if (!("IntersectionObserver" in window)) return;
+    motionObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("ptk-revealed");
+        motionSeen.add(entry.target.dataset.revealKey);
+        motionObserver.unobserve(entry.target);
+      });
+    }, { threshold: 0.08 });
+    page.querySelectorAll(".ptk-card, h2, h3").forEach(function (el, i) {
+      var key = pageKey + ":" + (el.dataset.motionKey || "heading-" + i);
+      if (motionSeen.has(key)) return;
+      el.dataset.revealKey = key;
+      el.style.setProperty("--reveal-delay", (i % 3) * 65 + "ms");
+      el.classList.add("ptk-reveal");
+      motionObserver.observe(el);
+    });
+  }
+
   function render() {
+    syncRoute();
     resetActions();
     var route = state.route;
     var page = "";
@@ -1459,10 +1518,11 @@
 
     var html =
       '<div style="min-height:100vh;background:var(--color-bg);font-family:var(--font-body)">' +
-        headerHTML() + page + footerHTML() + visitaDialogHTML() + toastHTML() + cookieBarHTML() +
+        headerHTML() + '<main id="ptk-page">' + page + '</main>' + footerHTML() + visitaDialogHTML() + toastHTML() + cookieBarHTML() +
       "</div>";
 
     document.getElementById("app").innerHTML = html;
+    initMotion();
   }
 
   /* ============================== Delegação de eventos ============================== */
@@ -1494,13 +1554,22 @@
   /* ============================== Início ============================== */
 
   loadState();
+  readRoute();
   initEvents();
   render();
+
+  window.addEventListener("popstate", function () {
+    readRoute(); render(); window.scrollTo(0, 0);
+  });
+  window.addEventListener("hashchange", function () {
+    readRoute(); render(); window.scrollTo(0, 0);
+  });
 
   setTimeout(function () {
     var loader = document.getElementById("ptk-loader");
     if (!loader) return;
     loader.classList.add("ptk-loader-hidden");
+    initMotion();
     setTimeout(function () { loader.remove(); }, 550);
   }, 1650);
 })();
