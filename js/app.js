@@ -125,6 +125,7 @@
     session: null,
     isAdmin: false,
     login: { email: "", senha: "", erro: "", carregando: false },
+    conta: { nova: "", confirma: "", erro: "", carregando: false },
     carregando: true,
     offline: false
   };
@@ -1150,7 +1151,7 @@
 
   function adminHTML() {
     if (!state.isAdmin) return loginHTML();
-    var tabs = [["dash", "Dashboard"], ["form", "Cadastro"], ["marca", "Marca-d'água"]];
+    var tabs = [["dash", "Dashboard"], ["form", "Cadastro"], ["marca", "Marca-d'água"], ["conta", "Conta"]];
     var goHomeA = go("home");
     var sairA = A(function () { sair(); });
     var tabsHTML = tabs.map(function (t) {
@@ -1164,6 +1165,7 @@
     if (state.adminTab === "dash") body = adminDashHTML();
     else if (state.adminTab === "form") body = adminFormHTML();
     else if (state.adminTab === "marca") body = adminMarcaHTML();
+    else if (state.adminTab === "conta") body = adminContaHTML();
 
     return (
       '<div>' +
@@ -1601,6 +1603,47 @@
             "</div>" +
           "</div>" +
         "</div>" +
+      "</div>"
+    );
+  }
+
+  function adminContaHTML() {
+    var ct = state.conta;
+    var novaA = A(function (e) { state.conta.nova = e.target.value; });
+    var confirmaA = A(function (e) { state.conta.confirma = e.target.value; });
+    var salvarA = A(function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      var nova = state.conta.nova || "";
+      if (nova.length < 8) { state.conta.erro = "Use pelo menos 8 caracteres."; render(); return; }
+      if (nova !== state.conta.confirma) { state.conta.erro = "As duas senhas não são iguais."; render(); return; }
+      state.conta.carregando = true; state.conta.erro = ""; render();
+      db.auth.updateUser({ password: nova })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          state.conta = { nova: "", confirma: "", erro: "", carregando: false };
+          render(); toast("Senha alterada");
+        })
+        .catch(function () {
+          state.conta.carregando = false;
+          state.conta.erro = "Não foi possível alterar a senha agora.";
+          render();
+        });
+    });
+    var email = state.session && state.session.user ? state.session.user.email : "";
+
+    return (
+      '<div style="max-width:460px">' +
+        '<div style="padding-bottom:20px;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
+          '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:10px">Conta</div>' +
+          '<h1 style="margin:0;font-size:clamp(24px,3vw,36px);letter-spacing:-0.03em">Sua senha de acesso</h1>' +
+          '<p style="margin:8px 0 0;font-size:13.5px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Conectada como ' + esc(email) + ".</p>" +
+        "</div>" +
+        '<form data-onsubmit="' + salvarA + '" style="display:grid;gap:14px;padding-top:26px">' +
+          '<div class="field"><label>Nova senha</label><input class="input" type="password" autocomplete="new-password" data-oninput="' + novaA + '" value="' + esc(ct.nova) + '" placeholder="Pelo menos 8 caracteres"></div>' +
+          '<div class="field"><label>Repita a nova senha</label><input class="input" type="password" autocomplete="new-password" data-oninput="' + confirmaA + '" value="' + esc(ct.confirma) + '"></div>' +
+          (ct.erro ? '<div style="font-size:13px;color:var(--color-accent-700);background:var(--color-accent-100);padding:10px 12px">' + esc(ct.erro) + "</div>" : "") +
+          '<button type="submit" class="btn btn-primary" style="justify-content:flex-start;padding:12px 20px"' + (ct.carregando ? " disabled" : "") + ">" + (ct.carregando ? "Salvando..." : "Alterar senha") + "</button>" +
+        "</form>" +
       "</div>"
     );
   }
