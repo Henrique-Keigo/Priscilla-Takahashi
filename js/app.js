@@ -79,6 +79,7 @@
       bairro: r.bairro || "",
       area: Number(r.area) || 0,
       quartos: Number(r.quartos) || 0,
+      suites: Number(r.suites) || 0,
       banheiros: Number(r.banheiros) || 0,
       vagas: Number(r.vagas) || 0,
       status: r.status || "rascunho",
@@ -96,7 +97,7 @@
       titulo: p.titulo || "", descricao: p.desc || "", descricao2: p.desc2 || "",
       tipo: p.tipo || "Casa", modo: p.modo || "Venda", preco: Number(p.preco) || 0,
       cep: p.cep || "", endereco: p.endereco || "", bairro: p.bairro || "",
-      area: Number(p.area) || 0, quartos: Number(p.quartos) || 0,
+      area: Number(p.area) || 0, quartos: Number(p.quartos) || 0, suites: Number(p.suites) || 0,
       banheiros: Number(p.banheiros) || 0, vagas: Number(p.vagas) || 0,
       status: p.status || "rascunho", etiquetas: p.etiquetas || [], feats: p.feats || [],
       obs: p.obs || "", photos: p.photos || [], cover_idx: Number(p.coverIdx) || 0,
@@ -112,7 +113,7 @@
     adminTab: "dash",
     galIdx: 0,
     favs: [],
-    fl: { loc: "", tipo: "", modo: "", quartos: "", faixa: "", feats: [], sort: "rec", onlyFavs: false },
+    fl: { loc: "", tipo: "", modo: "", quartos: "", suites: "", faixa: "", feats: [], sort: "rec", onlyFavs: false },
     props: [],
     viewedIds: [],
     draft: null,
@@ -163,7 +164,7 @@
 
   function carregarImoveis() {
     if (!db) { state.props = SEED.slice(); state.offline = true; state.carregando = false; return Promise.resolve(); }
-    var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,created_at,updated_at";
+    var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,suites,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,created_at,updated_at";
     return db.from("properties").select(state.isAdmin ? "*" : publicColumns).order("created_at", { ascending: false })
       .then(function (res) {
         if (res.error) throw res.error;
@@ -368,6 +369,7 @@
     if (f.tipo) list = list.filter(function (p) { return p.tipo === f.tipo; });
     if (f.modo) list = list.filter(function (p) { return p.modo === f.modo; });
     if (f.quartos) list = list.filter(function (p) { return Number(p.quartos) >= Number(f.quartos); });
+    if (f.suites) list = list.filter(function (p) { return Number(p.suites) >= Number(f.suites); });
     if (f.faixa) {
       var parts = f.faixa.split("-").map(Number), a = parts[0], b = parts[1];
       list = list.filter(function (p) { return Number(p.preco) >= a && Number(p.preco) <= b; });
@@ -389,7 +391,7 @@
   }
 
   function blankDraft() {
-    return { id: "", titulo: "", desc: "", desc2: "", tipo: "Casa", modo: "Venda", preco: "", cep: "", endereco: "", bairro: "", area: "", quartos: "", banheiros: "", vagas: "", status: "rascunho", etiquetas: "", obs: "", feats: [], photos: [], coverIdx: 0 };
+    return { id: "", titulo: "", desc: "", desc2: "", tipo: "Casa", modo: "Venda", preco: "", cep: "", endereco: "", bairro: "", area: "", quartos: "", suites: "", banheiros: "", vagas: "", status: "rascunho", etiquetas: "", obs: "", feats: [], photos: [], coverIdx: 0 };
   }
 
   var cepLookupTimer = null;
@@ -451,7 +453,7 @@
     opts = opts || {};
     var aspect = opts.aspect || "3/2";
     var isFav = state.favs.indexOf(p.id) !== -1;
-    var specs = [p.area ? p.area + " m²" : "", p.quartos ? p.quartos + " quartos" : "", p.vagas ? p.vagas + " vagas" : ""].filter(Boolean).join(" · ");
+    var specs = [p.area ? p.area + " m²" : "", p.quartos ? p.quartos + (p.quartos === 1 ? " quarto" : " quartos") : "", p.suites ? p.suites + (p.suites === 1 ? " suíte" : " suítes") : "", p.vagas ? p.vagas + (p.vagas === 1 ? " vaga" : " vagas") : ""].filter(Boolean).join(" · ");
     var cover = p.photos && p.photos.length ? (p.photos[p.coverIdx || 0] || p.photos[0]).src : "";
     var openA = openProp(p.id), favA = toggleFav(p.id);
     var titleSize = opts.titleSize || "18px";
@@ -721,6 +723,7 @@
     var tipoA = A(function (e) { state.fl.tipo = e.target.value; render(); });
     var modoA = A(function (e) { state.fl.modo = e.target.value; render(); });
     var quartosA = A(function (e) { state.fl.quartos = e.target.value; render(); });
+    var suitesA = A(function (e) { state.fl.suites = e.target.value; render(); });
     return (
       '<div class="field" style="flex:1 1 190px"><label>Localização</label>' +
         '<select class="input" data-onchange="' + locA + '"><option value="">Todos os bairros</option>' + locOpts + "</select></div>" +
@@ -731,6 +734,10 @@
       '<div class="field" style="flex:1 1 150px"><label>Quartos</label>' +
         '<select class="input" data-onchange="' + quartosA + '"><option value=""' + (f.quartos === "" ? " selected" : "") + ">Qualquer</option>" +
         [1, 2, 3, 4].map(function (n) { return '<option value="' + n + '"' + (f.quartos === String(n) ? " selected" : "") + ">" + n + " ou mais</option>"; }).join("") +
+        "</select></div>" +
+      '<div class="field" style="flex:1 1 150px"><label>Suítes</label>' +
+        '<select class="input" data-onchange="' + suitesA + '"><option value=""' + (f.suites === "" ? " selected" : "") + ">Qualquer</option>" +
+        [1, 2, 3, 4].map(function (n) { return '<option value="' + n + '"' + (f.suites === String(n) ? " selected" : "") + ">" + n + " ou mais</option>"; }).join("") +
         "</select></div>"
     );
   }
@@ -744,7 +751,7 @@
     var sortA = A(function (e) { state.fl.sort = e.target.value; render(); });
     var faixaA = A(function (e) { state.fl.faixa = e.target.value; render(); });
     var toggleFavFilterA = A(function () { state.fl.onlyFavs = !state.fl.onlyFavs; render(); });
-    var clearA = A(function () { state.fl = { loc: "", tipo: "", modo: "", quartos: "", faixa: "", feats: [], sort: "rec", onlyFavs: false }; render(); });
+    var clearA = A(function () { state.fl = { loc: "", tipo: "", modo: "", quartos: "", suites: "", faixa: "", feats: [], sort: "rec", onlyFavs: false }; render(); });
     var catTitle = f.onlyFavs ? "Seus favoritos" : (f.loc || "Todo o catálogo");
     var resultLabel = results.length === 1 ? "1 imóvel encontrado" : results.length + " imóveis encontrados";
 
@@ -844,6 +851,7 @@
     var specList = [
       { v: p.area || "—", l: "m² privativos" },
       { v: p.quartos || "—", l: "Quartos" },
+      { v: p.suites || "—", l: "Suítes" },
       { v: p.banheiros || "—", l: "Banheiros" },
       { v: p.vagas || "—", l: "Vagas" }
     ].map(function (s) {
@@ -1289,7 +1297,7 @@
     var p = state.props.filter(function (x) { return x.id === id; })[0];
     if (!p) return;
     state.draft = Object.assign({}, p, {
-      preco: String(p.preco || ""), area: String(p.area || ""), quartos: String(p.quartos || ""),
+      preco: String(p.preco || ""), area: String(p.area || ""), quartos: String(p.quartos || ""), suites: String(p.suites || ""),
       banheiros: String(p.banheiros || ""), vagas: String(p.vagas || ""),
       etiquetas: (p.etiquetas || []).join(", "), feats: (p.feats || []).slice(), photos: (p.photos || []).slice()
     });
@@ -1306,7 +1314,7 @@
     if (titleEl) titleEl.textContent = d2.titulo || "Imóvel sem título";
     if (localEl) localEl.textContent = (d2.bairro || "Bairro") + " · " + d2.tipo;
     if (precoEl) precoEl.textContent = d2.preco ? (d2.modo === "Aluguel" ? moneyBR(d2.preco) + " /mês" : moneyBR(d2.preco)) : "Valor a combinar";
-    var specsPrev = [d2.area ? d2.area + " m²" : "", d2.quartos ? d2.quartos + " quartos" : ""].filter(Boolean).join(" · ");
+    var specsPrev = [d2.area ? d2.area + " m²" : "", d2.quartos ? d2.quartos + " quartos" : "", d2.suites ? d2.suites + " suítes" : ""].filter(Boolean).join(" · ");
     if (specsEl) specsEl.textContent = specsPrev || "—";
   }
 
@@ -1375,7 +1383,7 @@
       });
     }).join("");
 
-    var specsPrev = [d2.area ? d2.area + " m²" : "", d2.quartos ? d2.quartos + " quartos" : ""].filter(Boolean).join(" · ");
+    var specsPrev = [d2.area ? d2.area + " m²" : "", d2.quartos ? d2.quartos + " quartos" : "", d2.suites ? d2.suites + " suítes" : ""].filter(Boolean).join(" · ");
 
     return (
       '<div>' +
@@ -1429,6 +1437,7 @@
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:14px">' +
                   '<div class="field"><label>Área (m²)</label><input class="input" data-oninput="' + setDraftField("area", true) + '" value="' + esc(d2.area) + '" placeholder="210"></div>' +
                   '<div class="field"><label>Quartos</label><input class="input" data-oninput="' + setDraftField("quartos", true) + '" value="' + esc(d2.quartos) + '" placeholder="3"></div>' +
+                  '<div class="field"><label>Suítes</label><input class="input" data-oninput="' + setDraftField("suites", true) + '" value="' + esc(d2.suites) + '" placeholder="1"></div>' +
                   '<div class="field"><label>Banheiros</label><input class="input" data-oninput="' + setDraftField("banheiros", false) + '" value="' + esc(d2.banheiros) + '" placeholder="2"></div>' +
                   '<div class="field"><label>Vagas</label><input class="input" data-oninput="' + setDraftField("vagas", false) + '" value="' + esc(d2.vagas) + '" placeholder="2"></div>' +
                 "</div>" +
