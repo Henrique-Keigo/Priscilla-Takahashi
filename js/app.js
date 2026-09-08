@@ -37,6 +37,7 @@
     { id: "p11", titulo: "Studio no Centro, pronto para morar", bairro: "Centro", tipo: "Studio", modo: "Aluguel", preco: 2400, area: 38, quartos: 1, banheiros: 1, vagas: 1, status: "alugado", etiquetas: [], feats: ["Mobiliado", "Elevador"], endereco: "Rua Rubião Júnior, 240", desc: "Studio compacto e mobiliado, a cinco minutos da Praça Afonso Pena.", desc2: "Alugado em agosto de 2026.", obs: "Contrato até 2028.", photos: [], coverIdx: 0 },
     { id: "p12", titulo: "Terreno em condomínio em Jacareí", bairro: "Jacareí", tipo: "Terreno", modo: "Venda", preco: 520000, area: 1000, quartos: 0, banheiros: 0, vagas: 0, status: "rascunho", etiquetas: [], feats: ["Condomínio fechado", "Vista para a serra"], endereco: "Estrada do Limoeiro, s/n", desc: "", desc2: "", obs: "Falta conferir a metragem na matrícula e agendar as fotos com o drone.", photos: [], coverIdx: 0 }
   ];
+  SEED.forEach(function (p, i) { p.createdAt = Date.now() - (SEED.length - i) * 6 * 24 * 60 * 60 * 1000; });
 
   /* ============================== Utilidades ============================== */
 
@@ -66,6 +67,7 @@
     favs: [],
     fl: { loc: "", tipo: "", modo: "", quartos: "", faixa: "", feats: [], sort: "rec", onlyFavs: false },
     props: SEED.map(function (p) { return Object.assign({}, p, { photos: p.photos || [] }); }),
+    viewedIds: [],
     draft: null,
     dragFrom: null,
     wm: { src: "images/icone-chaves-branco.png", name: "icone-chaves-branco.png (padrão da marca)", on: true, op: 18, scale: 22, pos: "center" },
@@ -76,6 +78,8 @@
   };
 
   var COOKIE_KEY = "ptk.cookies.v1";
+  var VISIT_KEY = "ptk.lastvisit.v1";
+  var prevVisitAt = null;
 
   function loadState() {
     try {
@@ -85,16 +89,22 @@
         if (Array.isArray(s.props) && s.props.length) state.props = s.props.map(function (p) { return Object.assign({}, p, { photos: p.photos || [] }); });
         if (s.favs) state.favs = s.favs;
         if (s.wm) state.wm = Object.assign({}, state.wm, s.wm);
+        if (Array.isArray(s.viewedIds)) state.viewedIds = s.viewedIds;
       }
     } catch (e) {}
     try {
       state.cookiesOk = localStorage.getItem(COOKIE_KEY) === "1";
     } catch (e) {}
+    try {
+      var lastVisitRaw = localStorage.getItem(VISIT_KEY);
+      prevVisitAt = lastVisitRaw ? Number(lastVisitRaw) : null;
+      localStorage.setItem(VISIT_KEY, String(Date.now()));
+    } catch (e) {}
   }
 
   function persist() {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ props: state.props, favs: state.favs, wm: state.wm }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ props: state.props, favs: state.favs, wm: state.wm, viewedIds: state.viewedIds }));
     } catch (e) {}
   }
 
@@ -138,7 +148,8 @@
     return A(function (e) {
       if (e && e.preventDefault) e.preventDefault();
       state.route = "imovel"; state.openId = id; state.galIdx = 0;
-      render();
+      state.viewedIds = [id].concat(state.viewedIds.filter(function (x) { return x !== id; })).slice(0, 20);
+      persist(); render();
       window.scrollTo(0, 0);
     });
   }
@@ -289,6 +300,51 @@
     );
   }
 
+  var carouselSeq = 0;
+  function carouselHTML(items, opts) {
+    opts = opts || {};
+    var domId = "carousel-" + (carouselSeq++);
+    var step = (opts.cardWidth || 260) + 14;
+    var cardsHTML = items.map(function (p) {
+      return '<div style="flex:0 0 ' + (opts.cardWidth || 260) + 'px">' + cardHTML(p, { aspect: opts.aspect || "3/2", titleSize: opts.titleSize || "16px", pad: "16px" }) + "</div>";
+    }).join("");
+    var prevA = A(function () { var el = document.getElementById(domId); if (el) el.scrollBy({ left: -step * 2, behavior: "smooth" }); });
+    var nextA = A(function () { var el = document.getElementById(domId); if (el) el.scrollBy({ left: step * 2, behavior: "smooth" }); });
+    return (
+      '<div style="position:relative">' +
+        '<div id="' + domId + '" style="display:flex;gap:14px;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;padding-bottom:4px">' + cardsHTML + "</div>" +
+        '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">' +
+          '<button data-onclick="' + prevA + '" class="btn btn-secondary" title="Anteriores" style="width:34px;height:34px;padding:0;border-radius:999px;justify-content:center">‹</button>' +
+          '<button data-onclick="' + nextA + '" class="btn btn-primary" title="Próximos" style="width:34px;height:34px;padding:0;border-radius:999px;justify-content:center">›</button>' +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  function novidadesDesdeUltimaVisita() {
+    if (!prevVisitAt) return [];
+    return state.props
+      .filter(function (p) { return p.status === "ativo" && p.createdAt && p.createdAt > prevVisitAt; })
+      .sort(function (a, b) { return b.createdAt - a.createdAt; })
+      .slice(0, 10);
+  }
+
+  function recomendadosPerfil() {
+    var signalIds = state.favs.concat(state.viewedIds);
+    if (!signalIds.length) return [];
+    var signalProps = state.props.filter(function (p) { return signalIds.indexOf(p.id) !== -1; });
+    if (!signalProps.length) return [];
+    var tipos = {}, bairros = {};
+    signalProps.forEach(function (p) { tipos[p.tipo] = true; bairros[p.bairro] = true; });
+    return state.props
+      .filter(function (p) { return p.status === "ativo" && signalIds.indexOf(p.id) === -1; })
+      .map(function (p) { return { p: p, score: (tipos[p.tipo] ? 1 : 0) + (bairros[p.bairro] ? 1 : 0) }; })
+      .filter(function (x) { return x.score > 0; })
+      .sort(function (a, b) { return b.score - a.score; })
+      .slice(0, 10)
+      .map(function (x) { return x.p; });
+  }
+
   function chipHTML(label, active, onClickFn) {
     var a = A(onClickFn);
     return '<button data-onclick="' + a + '" style="border:1px solid ' + (active ? "var(--color-accent)" : "rgba(32,30,29,.16)") + ";background:" + (active ? "var(--color-accent)" : "transparent") + ";color:" + (active ? "var(--color-bg)" : "var(--color-text)") + ';font-family:var(--font-body);font-size:12.5px;padding:7px 13px;cursor:pointer;transition:background .16s,color .16s,border-color .16s">' + esc(label) + "</button>";
@@ -374,6 +430,8 @@
     var ativos = state.props.filter(function (x) { return x.status === "ativo"; });
     var bairros = Array.from(new Set(state.props.filter(function (x) { return x.status !== "rascunho"; }).map(function (x) { return x.bairro; })));
     var featured = ativos.slice(0, 3);
+    var novidades = novidadesDesdeUltimaVisita();
+    var recomendados = recomendadosPerfil();
     var metodo = [
       { n: "01", t: "Visita técnica", d: "Vamos ao imóvel antes de aceitar o anúncio." },
       { n: "02", t: "Fotografia própria", d: "Sessão dedicada, sem lente que distorce." },
@@ -438,6 +496,16 @@
             featured.map(function (p) { return cardHTML(p, { aspect: "3/2", titleSize: "18px" }); }).join("") +
           "</div>" +
         "</div>" +
+
+        (novidades.length ? '<div style="max-width:1440px;margin:0 auto;padding:0 clamp(18px,4vw,56px) clamp(48px,6vw,72px)">' +
+          '<h3 style="margin:0 0 18px;font-size:clamp(20px,2.2vw,26px);letter-spacing:-0.02em">Novidades desde sua última visita</h3>' +
+          carouselHTML(novidades, { cardWidth: 260 }) +
+        "</div>" : "") +
+
+        (recomendados.length ? '<div style="max-width:1440px;margin:0 auto;padding:0 clamp(18px,4vw,56px) clamp(48px,6vw,72px)">' +
+          '<h3 style="margin:0 0 18px;font-size:clamp(20px,2.2vw,26px);letter-spacing:-0.02em">Baseado no seu perfil</h3>' +
+          carouselHTML(recomendados, { cardWidth: 260 }) +
+        "</div>" : "") +
 
         '<div style="border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
           '<div style="max-width:1440px;margin:0 auto;padding:0 clamp(18px,4vw,56px)">' +
@@ -1214,7 +1282,8 @@
       area: Number(d.area) || 0, quartos: Number(d.quartos) || 0, banheiros: Number(d.banheiros) || 0, vagas: Number(d.vagas) || 0,
       etiquetas: String(d.etiquetas || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean),
       bairro: d.bairro || "A definir",
-      status: status
+      status: status,
+      createdAt: d.createdAt || Date.now()
     });
     var exists = state.props.some(function (p) { return p.id === rec.id; });
     state.props = exists ? state.props.map(function (p) { return p.id === rec.id ? rec : p; }) : [rec].concat(state.props);
