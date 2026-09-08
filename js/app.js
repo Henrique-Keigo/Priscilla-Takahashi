@@ -23,6 +23,7 @@
 
   var STATUS_LABEL = { ativo: "Ativo", vendido: "Vendido", alugado: "Alugado", rascunho: "Rascunho" };
 
+  /* Dados fictícios antigos, mantidos fora da execução apenas como histórico de desenvolvimento.
   var SEED = [
     { id: "p1", titulo: "Casa de arquiteto no Urbanova", bairro: "Urbanova", tipo: "Casa", modo: "Venda", preco: 3850000, area: 420, quartos: 4, banheiros: 5, vagas: 4, status: "ativo", etiquetas: ["Exclusivo"], feats: ["Piscina", "Condomínio fechado", "Área gourmet", "Jardim", "Energia solar", "Home office"], endereco: "Rua das Andorinhas, 240", desc: "Projeto de 2018 implantado no sentido do declive do terreno, o que resolveu a insolação sem precisar de brises: a manhã entra pelos quartos e a tarde fica na área gourmet. Nenhuma árvore adulta foi removida na obra.", desc2: "Suíte máster no pavimento superior com varanda voltada para a mata. Cozinha integrada com ilha e despensa, lavanderia com acesso independente e um escritório de 18 m² com entrada própria — funciona para quem atende cliente em casa. Aquecimento solar, cisterna e gerador. A piscina foi retratada em 2023; o deck de madeira pede manutenção anual.", obs: "Proprietários se mudam para Campinas em fevereiro. Chave no escritório. Aceitam proposta até 7%.", photos: [], coverIdx: 0 },
     { id: "p2", titulo: "Cobertura duplex no Jardim Aquarius", bairro: "Jardim Aquarius", tipo: "Cobertura", modo: "Venda", preco: 2450000, area: 268, quartos: 3, banheiros: 4, vagas: 3, status: "ativo", etiquetas: ["Reformado"], feats: ["Vista para a serra", "Elevador", "Área gourmet", "Mobiliado", "Pé-direito duplo", "Portaria 24h"], endereco: "Av. Salmão, 1.120", desc: "Duplex no topo de um edifício de 2006 com apenas duas unidades por andar. A reforma de 2022 abriu a sala em pé-direito duplo e virou a cozinha para a vista da Serra da Mantiqueira.", desc2: "Terraço com churrasqueira, forno de pizza e espaço para ofurô já com ponto de água quente. Marcenaria assinada em todos os ambientes, ar-condicionado por ambiente e automação de iluminação. Condomínio com piscina aquecida, quadra e salão reformados em 2024.", obs: "Documentação em ordem, sem ônus. Proprietário aceita permuta por apartamento menor no Aquarius.", photos: [], coverIdx: 0 },
@@ -37,7 +38,7 @@
     { id: "p11", titulo: "Studio no Centro, pronto para morar", bairro: "Centro", tipo: "Studio", modo: "Aluguel", preco: 2400, area: 38, quartos: 1, banheiros: 1, vagas: 1, status: "alugado", etiquetas: [], feats: ["Mobiliado", "Elevador"], endereco: "Rua Rubião Júnior, 240", desc: "Studio compacto e mobiliado, a cinco minutos da Praça Afonso Pena.", desc2: "Alugado em agosto de 2026.", obs: "Contrato até 2028.", photos: [], coverIdx: 0 },
     { id: "p12", titulo: "Terreno em condomínio em Jacareí", bairro: "Jacareí", tipo: "Terreno", modo: "Venda", preco: 520000, area: 1000, quartos: 0, banheiros: 0, vagas: 0, status: "rascunho", etiquetas: [], feats: ["Condomínio fechado", "Vista para a serra"], endereco: "Estrada do Limoeiro, s/n", desc: "", desc2: "", obs: "Falta conferir a metragem na matrícula e agendar as fotos com o drone.", photos: [], coverIdx: 0 }
   ];
-  SEED.forEach(function (p, i) { p.createdAt = Date.now() - (SEED.length - i) * 6 * 24 * 60 * 60 * 1000; });
+  SEED.forEach(function (p, i) { p.createdAt = Date.now() - (SEED.length - i) * 6 * 24 * 60 * 60 * 1000; }); */
 
   /* ============================== Utilidades ============================== */
 
@@ -128,12 +129,14 @@
     login: { email: "", senha: "", erro: "", carregando: false },
     conta: { nova: "", confirma: "", erro: "", carregando: false },
     carregando: true,
-    offline: false
+    offline: false,
+    catalogError: ""
   };
 
   var FAVS_KEY = "ptk.favs.v1";
   var COOKIE_KEY = "ptk.cookies.v1";
   var VISIT_KEY = "ptk.lastvisit.v1";
+  var CATALOG_CACHE_KEY = "ptk.catalog.v1";
   var prevVisitAt = null;
 
   // Preferências do visitante continuam no navegador — são dele, não do catálogo.
@@ -162,19 +165,48 @@
     } catch (e) {}
   }
 
+  function saveCatalogCache(props) {
+    try {
+      var safe = props.map(function (p) {
+        var item = JSON.parse(JSON.stringify(p));
+        delete item.obs;
+        return item;
+      });
+      localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({ props: safe, savedAt: Date.now() }));
+    } catch (e) {}
+  }
+
+  function loadCatalogCache() {
+    try {
+      var cached = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || "null");
+      return cached && Array.isArray(cached.props) ? cached.props : [];
+    } catch (e) { return []; }
+  }
+
+  function preserveCatalog(previous) {
+    var cached = previous.length ? previous : loadCatalogCache();
+    state.props = cached;
+    state.offline = true;
+    state.catalogError = cached.length
+      ? "Não foi possível atualizar o catálogo agora. Exibindo a última versão disponível."
+      : "Não foi possível carregar o catálogo agora. Tente novamente em alguns instantes.";
+  }
+
   function carregarImoveis() {
-    if (!db) { state.props = []; state.offline = true; state.carregando = false; return Promise.resolve(); }
+    var previous = state.props.slice();
+    if (!db) { preserveCatalog(previous); state.carregando = false; return Promise.resolve(); }
     var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,suites,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,created_at,updated_at";
     return db.from("properties").select(state.isAdmin ? "*" : publicColumns).order("created_at", { ascending: false })
       .then(function (res) {
         if (res.error) throw res.error;
         state.props = (res.data || []).map(fromRow);
         state.offline = false;
+        state.catalogError = "";
+        saveCatalogCache(state.props);
       })
       .catch(function () {
-        // Sem conexão com o banco, nunca mostramos imóveis de demonstração como se fossem reais.
-        state.props = [];
-        state.offline = true;
+        // Falhas temporárias nunca removem o último catálogo real disponível.
+        preserveCatalog(previous);
       })
       .then(function () { state.carregando = false; });
   }
@@ -754,6 +786,9 @@
     var clearA = A(function () { state.fl = { loc: "", tipo: "", modo: "", quartos: "", suites: "", faixa: "", feats: [], sort: "rec", onlyFavs: false }; render(); });
     var catTitle = f.onlyFavs ? "Seus favoritos" : (f.loc || "Todo o catálogo");
     var resultLabel = results.length === 1 ? "1 imóvel encontrado" : results.length + " imóveis encontrados";
+    var catalogAlert = state.catalogError
+      ? '<div role="status" style="margin:22px 0 0;padding:14px 16px;border-left:3px solid var(--color-accent);background:var(--color-surface);font-size:13px;color:color-mix(in srgb,var(--color-text) 78%,transparent)">' + esc(state.catalogError) + "</div>"
+      : "";
 
     var faixaOpts = FAIXAS.map(function (fx) { return '<option value="' + fx.v + '"' + (f.faixa === fx.v ? " selected" : "") + ">" + esc(fx.l) + "</option>"; }).join("");
 
@@ -783,6 +818,8 @@
           "</select></div>" +
         "</div>" +
 
+        catalogAlert +
+
         '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;padding:22px 0;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
           filterFieldsHTML(bairros) +
           '<div class="field" style="flex:1 1 200px"><label>Faixa de preço</label><select class="input" data-onchange="' + faixaA + '"><option value="">Qualquer valor</option>' + faixaOpts + "</select></div>" +
@@ -802,9 +839,9 @@
 
         (results.length === 0 ?
           '<div style="padding:70px 0;text-align:left;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
-            '<h3 style="margin:0 0 8px">Nenhum imóvel com esses filtros.</h3>' +
-            '<p style="margin:0 0 18px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Ajuste a busca ou nos diga o que procura — buscamos fora do catálogo.</p>' +
-            '<button data-onclick="' + clearA + '" class="btn btn-primary" style="padding:10px 18px">Limpar filtros</button>' +
+            (state.catalogError
+              ? '<h3 style="margin:0 0 8px">Catálogo temporariamente indisponível.</h3><p style="margin:0;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Nenhum anúncio de demonstração será exibido.</p>'
+              : '<h3 style="margin:0 0 8px">Nenhum imóvel com esses filtros.</h3><p style="margin:0 0 18px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Ajuste a busca ou nos diga o que procura — buscamos fora do catálogo.</p><button data-onclick="' + clearA + '" class="btn btn-primary" style="padding:10px 18px">Limpar filtros</button>') +
           "</div>" : "") +
       "</div>"
     );
