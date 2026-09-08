@@ -398,7 +398,7 @@
 
     return (
       '<div>' +
-        '<div style="position:relative;width:100%;height:min(88vh,860px);min-height:520px;overflow:hidden;background:var(--color-neutral-900)">' +
+        '<div style="position:relative;width:100%;height:min(58vh,560px);min-height:400px;overflow:hidden;background:var(--color-neutral-900)">' +
           '<div style="position:absolute;inset:0">' + photoImg("images/hero-fachada.webp") + "</div>" +
           '<div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(20,18,17,.72) 0%,rgba(20,18,17,.38) 48%,rgba(20,18,17,0) 78%);pointer-events:none"></div>' +
           '<div style="position:absolute;inset:0;display:flex;align-items:flex-end;pointer-events:none">' +
@@ -408,7 +408,7 @@
                   '<span style="width:34px;height:2px;background:var(--color-accent)"></span>' +
                   '<span style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#f3f2f2">' + esc(CIDADE) + " · Vale do Paraíba</span>" +
                 "</div>" +
-                '<h1 style="margin:0;color:#f8f4f4;font-size:clamp(38px,6.4vw,92px);line-height:.94;letter-spacing:-0.035em;text-wrap:balance">Arquitetura<br>para se viver<br>devagar.</h1>' +
+                '<h1 style="margin:0;color:#f8f4f4;font-size:clamp(32px,4.8vw,64px);line-height:.98;letter-spacing:-0.03em;text-wrap:balance">Arquitetura<br>para se viver<br>devagar.</h1>' +
                 '<p style="margin:22px 0 0;max-width:440px;font-size:15px;line-height:1.6;color:rgba(248,244,244,.78)">Uma seleção curta de casas, coberturas e residências assinadas — apresentadas com o cuidado que elas merecem.</p>' +
               "</div>" +
             "</div>" +
