@@ -209,8 +209,11 @@
     state.session = session || null;
     if (!session) { state.isAdmin = false; return Promise.resolve(); }
     return db.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle()
-      .then(function (res) { state.isAdmin = !!(res && res.data); })
-      .catch(function () { state.isAdmin = false; });
+      .then(function (res) {
+        state.isAdmin = false;
+        if (res.error) throw new Error("ADMIN_CHECK_FAILED");
+        state.isAdmin = !!res.data;
+      });
   }
 
   function entrar() {
@@ -225,13 +228,28 @@
         return aplicarSessao(res.data.session);
       })
       .then(function () {
+        if (!state.isAdmin) throw new Error("ADMIN_REQUIRED");
         state.login = { email: "", senha: "", erro: "", carregando: false };
         return carregarImoveis();
       })
       .then(function () { render(); toast("Bem-vinda, Priscila!"); })
       .catch(function (err) {
         state.login.carregando = false;
-        state.login.erro = (err && /Invalid login/i.test(err.message || "")) ? "E-mail ou senha incorretos." : "Não foi possível entrar agora.";
+        var code = err && err.code || "";
+        var message = err && err.message || "";
+        if (code === "email_not_confirmed" || /email not confirmed/i.test(message)) {
+          state.login.erro = "Seu e-mail ainda não foi confirmado. Abra o e-mail de confirmação do cadastro antes de entrar.";
+        } else if (code === "invalid_credentials" || /Invalid login/i.test(message)) {
+          state.login.erro = "E-mail ou senha incorretos.";
+        } else if (message === "ADMIN_REQUIRED") {
+          state.login.erro = "Login válido, mas esta conta não tem permissão de administradora. Verifique o cadastro em admins no Supabase.";
+        } else if (message === "ADMIN_CHECK_FAILED") {
+          state.login.erro = "Login válido, mas não foi possível verificar a permissão de administradora. Verifique as regras de acesso da tabela admins no Supabase.";
+        } else if (err && err.status === 429) {
+          state.login.erro = "Muitas tentativas de acesso. Aguarde alguns minutos e tente novamente.";
+        } else {
+          state.login.erro = "Não foi possível conectar ao login. Tente novamente." + (code ? " Código: " + code : "");
+        }
         render();
       });
   }
@@ -1131,7 +1149,13 @@
     var l = state.login;
     var emailA = A(function (e) { state.login.email = e.target.value; });
     var senhaA = A(function (e) { state.login.senha = e.target.value; });
-    var entrarA = A(function (e) { if (e && e.preventDefault) e.preventDefault(); entrar(); });
+    var entrarA = A(function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      var form = e.target.closest("form");
+      state.login.email = form.querySelector('input[type="email"]').value;
+      state.login.senha = form.querySelector('input[type="password"]').value;
+      entrar();
+    });
     var goHomeA = go("home");
     return (
       '<div style="max-width:420px;margin:0 auto;padding:clamp(48px,8vw,96px) clamp(18px,4vw,56px) 120px">' +
