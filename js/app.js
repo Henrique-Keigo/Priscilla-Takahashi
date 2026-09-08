@@ -55,9 +55,56 @@
 
   function uid(prefix) { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-  /* ============================== Estado ============================== */
+  /* ============================== Backend (Supabase) ============================== */
 
-  var STORE_KEY = "ptk.priscilla.v1";
+  var SUPABASE_URL = "https://gqbgdpadxedvomnxqelg.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYmdkcGFkeGVkdm9tbnhxZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NjY5MTcsImV4cCI6MjEwNDQ0MjkxN30.TvTWNAYDd5Pd1tPgjVJtudGf0fntNzmz0BKdqPHM27k";
+
+  var db = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  // Banco -> formato usado na tela.
+  function fromRow(r) {
+    return {
+      id: r.id,
+      titulo: r.titulo || "",
+      desc: r.descricao || "",
+      desc2: r.descricao2 || "",
+      tipo: r.tipo || "Casa",
+      modo: r.modo || "Venda",
+      preco: Number(r.preco) || 0,
+      cep: r.cep || "",
+      endereco: r.endereco || "",
+      bairro: r.bairro || "",
+      area: Number(r.area) || 0,
+      quartos: Number(r.quartos) || 0,
+      banheiros: Number(r.banheiros) || 0,
+      vagas: Number(r.vagas) || 0,
+      status: r.status || "rascunho",
+      etiquetas: r.etiquetas || [],
+      feats: r.feats || [],
+      obs: r.obs || "",
+      photos: Array.isArray(r.photos) ? r.photos : [],
+      coverIdx: Number(r.cover_idx) || 0,
+      createdAt: r.created_at ? new Date(r.created_at).getTime() : 0
+    };
+  }
+
+  function toRow(p) {
+    return {
+      titulo: p.titulo || "", descricao: p.desc || "", descricao2: p.desc2 || "",
+      tipo: p.tipo || "Casa", modo: p.modo || "Venda", preco: Number(p.preco) || 0,
+      cep: p.cep || "", endereco: p.endereco || "", bairro: p.bairro || "",
+      area: Number(p.area) || 0, quartos: Number(p.quartos) || 0,
+      banheiros: Number(p.banheiros) || 0, vagas: Number(p.vagas) || 0,
+      status: p.status || "rascunho", etiquetas: p.etiquetas || [], feats: p.feats || [],
+      obs: p.obs || "", photos: p.photos || [], cover_idx: Number(p.coverIdx) || 0,
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  /* ============================== Estado ============================== */
 
   var state = {
     route: "home",
@@ -66,29 +113,34 @@
     galIdx: 0,
     favs: [],
     fl: { loc: "", tipo: "", modo: "", quartos: "", faixa: "", feats: [], sort: "rec", onlyFavs: false },
-    props: SEED.map(function (p) { return Object.assign({}, p, { photos: p.photos || [] }); }),
+    props: [],
     viewedIds: [],
     draft: null,
     dragFrom: null,
-    wm: { src: "images/icone-chaves-branco.png", name: "icone-chaves-branco.png (padrão da marca)", on: true, op: 18, scale: 22, pos: "center" },
+    wm: { src: "", name: "", on: true, op: 18, scale: 22, pos: "center" },
     lead: { nome: "", tel: "", email: "", interesse: "Comprar", msg: "" },
     visitaOpen: false,
     toast: "",
-    cookiesOk: false
+    cookiesOk: false,
+    session: null,
+    isAdmin: false,
+    login: { email: "", senha: "", erro: "", carregando: false },
+    carregando: true,
+    offline: false
   };
 
+  var FAVS_KEY = "ptk.favs.v1";
   var COOKIE_KEY = "ptk.cookies.v1";
   var VISIT_KEY = "ptk.lastvisit.v1";
   var prevVisitAt = null;
 
+  // Preferências do visitante continuam no navegador — são dele, não do catálogo.
   function loadState() {
     try {
-      var raw = localStorage.getItem(STORE_KEY);
+      var raw = localStorage.getItem(FAVS_KEY);
       if (raw) {
         var s = JSON.parse(raw);
-        if (Array.isArray(s.props) && s.props.length) state.props = s.props.map(function (p) { return Object.assign({}, p, { photos: p.photos || [] }); });
-        if (s.favs) state.favs = s.favs;
-        if (s.wm) state.wm = Object.assign({}, state.wm, s.wm);
+        if (Array.isArray(s.favs)) state.favs = s.favs;
         if (Array.isArray(s.viewedIds)) state.viewedIds = s.viewedIds;
       }
     } catch (e) {}
@@ -104,14 +156,91 @@
 
   function persist() {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ props: state.props, favs: state.favs, wm: state.wm, viewedIds: state.viewedIds }));
+      localStorage.setItem(FAVS_KEY, JSON.stringify({ favs: state.favs, viewedIds: state.viewedIds }));
     } catch (e) {}
+  }
+
+  function carregarImoveis() {
+    if (!db) { state.props = SEED.slice(); state.offline = true; state.carregando = false; return Promise.resolve(); }
+    return db.from("properties").select("*").order("created_at", { ascending: false })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        state.props = (res.data || []).map(fromRow);
+        state.offline = false;
+      })
+      .catch(function () {
+        // Sem conexão com o banco: mostra o catálogo de exemplo em vez de uma página vazia.
+        state.props = SEED.slice();
+        state.offline = true;
+      })
+      .then(function () { state.carregando = false; });
+  }
+
+  function carregarConfig() {
+    if (!db) return Promise.resolve();
+    return db.from("site_settings").select("*").eq("id", 1).maybeSingle()
+      .then(function (res) {
+        if (res.error || !res.data) return;
+        var s = res.data;
+        state.wm = { src: s.wm_url || "", name: s.wm_name || "", on: !!s.wm_on, op: Number(s.wm_opacity) || 18, scale: Number(s.wm_scale) || 22, pos: s.wm_pos || "center" };
+      })
+      .catch(function () {});
+  }
+
+  function salvarConfigWm() {
+    if (!db || !state.isAdmin) return Promise.resolve();
+    return db.from("site_settings").update({
+      wm_url: state.wm.src, wm_name: state.wm.name, wm_on: state.wm.on,
+      wm_opacity: state.wm.op, wm_scale: state.wm.scale, wm_pos: state.wm.pos,
+      updated_at: new Date().toISOString()
+    }).eq("id", 1).then(function () {}).catch(function () {});
   }
 
   function acceptCookies() {
     state.cookiesOk = true;
     try { localStorage.setItem(COOKIE_KEY, "1"); } catch (e) {}
     render();
+  }
+
+  /* ============================== Autenticação do painel ============================== */
+
+  function aplicarSessao(session) {
+    state.session = session || null;
+    if (!session) { state.isAdmin = false; return Promise.resolve(); }
+    return db.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle()
+      .then(function (res) { state.isAdmin = !!(res && res.data); })
+      .catch(function () { state.isAdmin = false; });
+  }
+
+  function entrar() {
+    if (!db) { state.login.erro = "Sem conexão com o servidor."; render(); return; }
+    var email = (state.login.email || "").trim();
+    var senha = state.login.senha || "";
+    if (!email || !senha) { state.login.erro = "Informe e-mail e senha."; render(); return; }
+    state.login.carregando = true; state.login.erro = ""; render();
+    db.auth.signInWithPassword({ email: email, password: senha })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return aplicarSessao(res.data.session);
+      })
+      .then(function () {
+        state.login = { email: "", senha: "", erro: "", carregando: false };
+        return carregarImoveis();
+      })
+      .then(function () { render(); toast("Bem-vinda, Priscila!"); })
+      .catch(function (err) {
+        state.login.carregando = false;
+        state.login.erro = (err && /Invalid login/i.test(err.message || "")) ? "E-mail ou senha incorretos." : "Não foi possível entrar agora.";
+        render();
+      });
+  }
+
+  function sair() {
+    if (!db) return;
+    db.auth.signOut().catch(function () {}).then(function () {
+      state.session = null; state.isAdmin = false; state.route = "home"; state.adminTab = "dash"; state.draft = null;
+      return carregarImoveis();
+    }).then(function () { render(); toast("Você saiu do painel"); });
   }
 
   var toastTimer = null;
@@ -229,6 +358,8 @@
     if (f.sort === "area") list = list.slice().sort(function (a, b) { return b.area - a.area; });
     return list;
   }
+
+  function refCurta(id) { return String(id || "").replace(/-/g, "").slice(0, 6).toUpperCase(); }
 
   function precoLabel(p) { return p.modo === "Aluguel" ? moneyBR(p.preco) + " /mês" : moneyBR(p.preco); }
 
@@ -505,9 +636,12 @@
             "</div>" +
             '<button data-onclick="' + goCatA + '" class="btn btn-secondary" style="padding:10px 18px">Ver o catálogo completo →</button>' +
           "</div>" +
-          '<div class="ptk-property-grid">' +
-            featured.map(function (p) { return cardHTML(p, { aspect: "3/2", titleSize: "18px" }); }).join("") +
-          "</div>" +
+          (featured.length
+            ? '<div class="ptk-property-grid">' + featured.map(function (p) { return cardHTML(p, { aspect: "3/2", titleSize: "18px" }); }).join("") + "</div>"
+            : '<div style="border:1px dashed color-mix(in srgb,var(--color-text) 20%,transparent);padding:clamp(28px,4vw,44px);text-align:center">' +
+                '<p style="margin:0 0 6px;font-family:var(--font-heading);font-weight:500;font-size:17px">Novos imóveis a caminho</p>' +
+                '<p style="margin:0;font-size:14px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Estamos preparando a próxima seleção. Fale com a corretora para saber o que está entrando no catálogo.</p>' +
+              "</div>") +
         "</div>" +
 
         (novidades.length ? '<div style="max-width:1440px;margin:0 auto;padding:0 clamp(18px,4vw,56px) clamp(48px,6vw,72px)">' +
@@ -656,7 +790,7 @@
     if (!p) return "";
     var isFav = state.favs.indexOf(p.id) !== -1;
     var gal = galleryOf(p);
-    var wa = waLinkFor("Olá! Tenho interesse no imóvel " + p.titulo + " (ref. " + p.id.toUpperCase() + ").");
+    var wa = waLinkFor("Olá! Tenho interesse no imóvel " + p.titulo + " (ref. " + refCurta(p.id) + ").");
     var mapLink = "https://www.google.com/maps/search/" + encodeURIComponent(p.endereco + ", " + p.bairro + ", " + CIDADE);
 
     var goCatA = go("catalogo");
@@ -782,7 +916,7 @@
                 '<div style="padding:20px 22px;display:flex;flex-direction:column;gap:10px">' +
                   '<a href="' + esc(wa) + '" target="_blank" class="btn btn-primary" style="width:100%;justify-content:flex-start;padding:13px 16px;font-size:13.5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.3-.6L3 21l1.8-5A8.4 8.4 0 1 1 21 11.5z"></path></svg> Falar no WhatsApp</a>' +
                   '<button data-onclick="' + openVisitaA + '" class="btn btn-secondary" style="width:100%;justify-content:flex-start;padding:13px 16px;font-size:13.5px">Solicitar uma visita</button>' +
-                  '<div style="font-size:11.5px;line-height:1.5;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-top:4px">Resposta no mesmo dia, de segunda a sábado. Ref. ' + esc(p.id.toUpperCase()) + "</div>" +
+                  '<div style="font-size:11.5px;line-height:1.5;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-top:4px">Resposta no mesmo dia, de segunda a sábado. Ref. ' + esc(refCurta(p.id)) + "</div>" +
                 "</div>" +
               "</div>" +
             "</div>" +
@@ -956,7 +1090,8 @@
       { t: "Uso aceitável", d: "Este catálogo é para uso pessoal de quem busca comprar, alugar ou vender um imóvel. Não utilize o site para extrair dados em massa, redistribuir o conteúdo comercialmente ou qualquer finalidade que não seja a consulta de imóveis." }
     ];
     var secoesPrivacidade = [
-      { t: "O que este site guarda no seu navegador", d: "Os imóveis favoritados, os filtros de busca e as preferências do painel administrativo (quando usado pela corretora) ficam salvos apenas no armazenamento local do seu próprio navegador (localStorage) — nada é enviado para um servidor ou compartilhado com terceiros." },
+      { t: "O que fica no seu navegador", d: "Os imóveis que você favorita e os que já visitou ficam salvos apenas no armazenamento local do seu próprio navegador (localStorage). Essa lista não é enviada para nenhum servidor nem compartilhada com terceiros." },
+      { t: "O que fica no nosso servidor", d: "Apenas o catálogo em si — os imóveis, fotos e textos publicados pela corretora — armazenados no Supabase (infraestrutura de banco de dados). Nada sobre a sua navegação é gravado lá." },
       { t: "Cookies", d: "Usamos um único cookie/armazenamento local para lembrar que você já viu este aviso, evitando mostrá-lo de novo a cada visita. Não usamos cookies de rastreamento, publicidade ou analytics de terceiros." },
       { t: "Formulário de contato e WhatsApp", d: "Ao enviar uma mensagem pelo formulário de contato ou pelo botão do WhatsApp, os dados (nome, telefone, e-mail, mensagem) vão diretamente para a conversa do WhatsApp ou são tratados manualmente pela corretora — não ficam armazenados neste site." },
       { t: "Como limpar seus dados", d: "Para apagar favoritos e preferências salvos por este site, limpe os dados de navegação (\"cookies e dados de site\") do seu navegador para este domínio." },
@@ -991,9 +1126,33 @@
 
   /* ============================== Painel administrativo ============================== */
 
+  function loginHTML() {
+    var l = state.login;
+    var emailA = A(function (e) { state.login.email = e.target.value; });
+    var senhaA = A(function (e) { state.login.senha = e.target.value; });
+    var entrarA = A(function (e) { if (e && e.preventDefault) e.preventDefault(); entrar(); });
+    var goHomeA = go("home");
+    return (
+      '<div style="max-width:420px;margin:0 auto;padding:clamp(48px,8vw,96px) clamp(18px,4vw,56px) 120px">' +
+        '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:14px">Painel da corretora</div>' +
+        '<h1 style="margin:0 0 8px;font-size:clamp(26px,3.4vw,38px);letter-spacing:-0.03em">Entrar no painel</h1>' +
+        '<p style="font-size:14px;color:color-mix(in srgb,var(--color-text) 60%,transparent);margin-bottom:28px">Área restrita para cadastro e edição dos imóveis do site.</p>' +
+        '<form data-onsubmit="' + entrarA + '" style="display:grid;gap:14px;border:1px solid color-mix(in srgb,var(--color-text) 20%,transparent);padding:clamp(20px,3vw,28px)">' +
+          '<div class="field"><label>E-mail</label><input class="input" type="email" autocomplete="username" data-oninput="' + emailA + '" value="' + esc(l.email) + '" placeholder="voce@email.com"></div>' +
+          '<div class="field"><label>Senha</label><input class="input" type="password" autocomplete="current-password" data-oninput="' + senhaA + '" value="' + esc(l.senha) + '" placeholder="••••••••"></div>' +
+          (l.erro ? '<div style="font-size:13px;color:var(--color-accent-700);background:var(--color-accent-100);padding:10px 12px">' + esc(l.erro) + "</div>" : "") +
+          '<button type="submit" class="btn btn-primary" style="justify-content:center;padding:13px 20px"' + (l.carregando ? " disabled" : "") + ">" + (l.carregando ? "Entrando..." : "Entrar") + "</button>" +
+        "</form>" +
+        '<button data-onclick="' + goHomeA + '" class="btn btn-ghost" style="margin-top:18px;font-size:12.5px;padding-left:0">← Voltar ao site</button>' +
+      "</div>"
+    );
+  }
+
   function adminHTML() {
+    if (!state.isAdmin) return loginHTML();
     var tabs = [["dash", "Dashboard"], ["form", "Cadastro"], ["marca", "Marca-d'água"]];
     var goHomeA = go("home");
+    var sairA = A(function () { sair(); });
     var tabsHTML = tabs.map(function (t) {
       var k = t[0], l = t[1];
       var goA = A(function () { state.adminTab = k; if (k === "form" && !state.draft) state.draft = blankDraft(); render(); });
@@ -1013,6 +1172,7 @@
             '<span style="font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 50%,transparent);padding:16px 24px 16px 0">Painel da corretora</span>' +
             tabsHTML +
             '<button data-onclick="' + goHomeA + '" class="btn btn-ghost" style="margin-left:auto;font-size:12px">Ver o site público ↗</button>' +
+            '<button data-onclick="' + sairA + '" class="btn btn-ghost" style="font-size:12px">Sair</button>' +
           "</div>" +
         "</div>" +
         '<div style="max-width:1440px;margin:0 auto;padding:clamp(26px,3vw,44px) clamp(18px,4vw,56px) 90px">' + body + "</div>" +
@@ -1035,21 +1195,38 @@
     var rows = state.props.map(function (x) {
       var editA = A(function () { editProp(x.id); });
       var toggleA = A(function () {
-        state.props = state.props.map(function (y) { return y.id === x.id ? Object.assign({}, y, { status: y.status === "ativo" ? "rascunho" : "ativo" }) : y; });
-        persist(); render(); toast(x.status === "ativo" ? "Saiu do site" : "Publicado no site");
+        var novoStatus = x.status === "ativo" ? "rascunho" : "ativo";
+        db.from("properties").update({ status: novoStatus, updated_at: new Date().toISOString() }).eq("id", x.id)
+          .then(function (res) {
+            if (res.error) throw res.error;
+            return carregarImoveis();
+          })
+          .then(function () { render(); toast(novoStatus === "rascunho" ? "Saiu do site" : "Publicado no site"); })
+          .catch(function () { toast("Não foi possível salvar agora"); });
       });
       var dupA = A(function () {
-        var copy = Object.assign({}, x, { id: uid("n"), titulo: x.titulo + " (cópia)", status: "rascunho" });
-        state.props = [copy].concat(state.props);
-        persist(); render(); toast("Duplicado como rascunho");
+        var copia = toRow(Object.assign({}, x, { titulo: x.titulo + " (cópia)", status: "rascunho" }));
+        db.from("properties").insert(copia)
+          .then(function (res) {
+            if (res.error) throw res.error;
+            return carregarImoveis();
+          })
+          .then(function () { render(); toast("Duplicado como rascunho"); })
+          .catch(function () { toast("Não foi possível duplicar agora"); });
       });
       var delA = A(function () {
-        state.props = state.props.filter(function (y) { return y.id !== x.id; });
-        persist(); render(); toast("Imóvel excluído");
+        if (!window.confirm("Excluir \"" + x.titulo + "\" definitivamente?")) return;
+        db.from("properties").delete().eq("id", x.id)
+          .then(function (res) {
+            if (res.error) throw res.error;
+            return carregarImoveis();
+          })
+          .then(function () { render(); toast("Imóvel excluído"); })
+          .catch(function () { toast("Não foi possível excluir agora"); });
       });
       var tagClass = x.status === "ativo" ? "tag tag-accent" : x.status === "rascunho" ? "tag tag-outline" : "tag tag-neutral";
       return "<tr>" +
-        '<td><div style="font-family:var(--font-heading);font-weight:500;font-size:13.5px">' + esc(x.titulo) + "</div><div style=\"font-size:11px;color:color-mix(in srgb,var(--color-text) 50%,transparent)\">" + esc(x.tipo) + " · " + (x.area || "—") + " m² · ref. " + esc(x.id.toUpperCase()) + "</div></td>" +
+        '<td><div style="font-family:var(--font-heading);font-weight:500;font-size:13.5px">' + esc(x.titulo) + "</div><div style=\"font-size:11px;color:color-mix(in srgb,var(--color-text) 50%,transparent)\">" + esc(x.tipo) + " · " + (x.area || "—") + " m² · ref. " + esc(refCurta(x.id)) + "</div></td>" +
         '<td style="font-size:13px">' + esc(x.bairro) + "</td>" +
         '<td style="font-size:13px;font-variant-numeric:tabular-nums">' + esc(precoLabel(x)) + "</td>" +
         '<td><span class="' + tagClass + '">' + (STATUS_LABEL[x.status] || x.status) + "</span></td>" +
@@ -1268,55 +1445,75 @@
     );
   }
 
+  function nomeArquivoSeguro(nome) {
+    var ext = (nome.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + "." + (ext || "jpg");
+  }
+
+  function enviarArquivo(bucket, file) {
+    var caminho = nomeArquivoSeguro(file.name);
+    return db.storage.from(bucket).upload(caminho, file, { cacheControl: "3600", upsert: false })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        var pub = db.storage.from(bucket).getPublicUrl(caminho);
+        return { path: caminho, src: pub.data.publicUrl, name: file.name };
+      });
+  }
+
   function onPhotos(e) {
     var files = Array.prototype.slice.call(e.target.files || []);
-    if (!files.length) return;
-    Promise.all(files.map(function (f) {
-      return new Promise(function (res) {
-        var r = new FileReader();
-        r.onload = function () { res({ id: uid("ph"), src: r.result, name: f.name }); };
-        r.readAsDataURL(f);
-      });
-    })).then(function (added) {
-      state.draft = state.draft || blankDraft();
-      state.draft.photos = (state.draft.photos || []).concat(added);
-      render();
-      toast(added.length + (added.length > 1 ? " fotos adicionadas" : " foto adicionada"));
-    });
     e.target.value = "";
+    if (!files.length) return;
+    toast(files.length > 1 ? "Enviando fotos..." : "Enviando foto...");
+    Promise.all(files.map(function (f) { return enviarArquivo("property-photos", f); }))
+      .then(function (added) {
+        state.draft = state.draft || blankDraft();
+        state.draft.photos = (state.draft.photos || []).concat(added);
+        render();
+        toast(added.length + (added.length > 1 ? " fotos enviadas" : " foto enviada"));
+      })
+      .catch(function () { toast("Não foi possível enviar as fotos agora"); });
   }
 
   function saveDraftWith(status) {
     var d = state.draft || blankDraft();
-    var rec = Object.assign({}, d, {
-      id: d.id || uid("n"),
+    var rec = toRow(Object.assign({}, d, {
       titulo: d.titulo || "Imóvel sem título",
       preco: Number(String(d.preco).replace(/\D/g, "")) || 0,
-      area: Number(d.area) || 0, quartos: Number(d.quartos) || 0, banheiros: Number(d.banheiros) || 0, vagas: Number(d.vagas) || 0,
       etiquetas: String(d.etiquetas || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean),
       bairro: d.bairro || "A definir",
-      status: status,
-      createdAt: d.createdAt || Date.now()
-    });
-    var exists = state.props.some(function (p) { return p.id === rec.id; });
-    state.props = exists ? state.props.map(function (p) { return p.id === rec.id ? rec : p; }) : [rec].concat(state.props);
-    state.draft = null; state.adminTab = "dash";
-    persist(); render();
-    toast(status === "rascunho" ? "Rascunho salvo — complete quando quiser" : "Publicado no site");
-    window.scrollTo(0, 0);
+      status: status
+    }));
+    var salvar = d.id
+      ? db.from("properties").update(rec).eq("id", d.id)
+      : db.from("properties").insert(rec);
+    toast("Salvando...");
+    salvar
+      .then(function (res) {
+        if (res.error) throw res.error;
+        state.draft = null; state.adminTab = "dash";
+        return carregarImoveis();
+      })
+      .then(function () {
+        render();
+        toast(status === "rascunho" ? "Rascunho salvo — complete quando quiser" : "Publicado no site");
+        window.scrollTo(0, 0);
+      })
+      .catch(function () { toast("Não foi possível salvar agora"); });
   }
 
   function onWm(e) {
     var f = (e.target.files || [])[0];
-    if (!f) return;
-    var r = new FileReader();
-    r.onload = function () {
-      state.wm = Object.assign({}, state.wm, { src: r.result, name: f.name, on: true });
-      persist(); render();
-      toast("Marca-d'água atualizada");
-    };
-    r.readAsDataURL(f);
     e.target.value = "";
+    if (!f) return;
+    toast("Enviando marca-d'água...");
+    enviarArquivo("site-assets", f)
+      .then(function (up) {
+        state.wm = Object.assign({}, state.wm, { src: up.src, name: f.name, on: true });
+        return salvarConfigWm();
+      })
+      .then(function () { render(); toast("Marca-d'água atualizada"); })
+      .catch(function () { toast("Não foi possível enviar a imagem agora"); });
   }
 
   function syncWmPreview() {
@@ -1337,13 +1534,13 @@
   function adminMarcaHTML() {
     var w = state.wm;
     var onWmA = A(onWm);
-    var removeWmA = A(function () { state.wm = Object.assign({}, state.wm, { src: "", name: "" }); persist(); render(); toast("Marca-d'água removida"); });
-    var onToggleA = A(function (e) { state.wm.on = e.target.checked; persist(); render(); });
+    var removeWmA = A(function () { state.wm = Object.assign({}, state.wm, { src: "", name: "" }); salvarConfigWm(); render(); toast("Marca-d'água removida"); });
+    var onToggleA = A(function (e) { state.wm.on = e.target.checked; salvarConfigWm(); render(); });
     var opInputA = A(function (e) { state.wm.op = Number(e.target.value); syncWmPreview(); });
-    var opChangeA = A(function (e) { state.wm.op = Number(e.target.value); persist(); syncWmPreview(); });
+    var opChangeA = A(function (e) { state.wm.op = Number(e.target.value); salvarConfigWm(); syncWmPreview(); });
     var scaleInputA = A(function (e) { state.wm.scale = Number(e.target.value); syncWmPreview(); });
-    var scaleChangeA = A(function (e) { state.wm.scale = Number(e.target.value); persist(); syncWmPreview(); });
-    var posA = A(function (e) { state.wm.pos = e.target.value; persist(); render(); });
+    var scaleChangeA = A(function (e) { state.wm.scale = Number(e.target.value); salvarConfigWm(); syncWmPreview(); });
+    var posA = A(function (e) { state.wm.pos = e.target.value; salvarConfigWm(); render(); });
 
     var fileBlock = w.src ?
       '<div>' +
@@ -1529,7 +1726,7 @@
 
   function initEvents() {
     var app = document.getElementById("app");
-    ["click", "change", "input", "dragstart", "dragover", "drop", "dragend"].forEach(function (evt) {
+    ["click", "change", "input", "submit", "dragstart", "dragover", "drop", "dragend"].forEach(function (evt) {
       app.addEventListener(evt, function (e) {
         var attr = "data-on" + evt;
         var el = e.target.closest && e.target.closest("[" + attr + "]");
@@ -1554,9 +1751,18 @@
   /* ============================== Início ============================== */
 
   loadState();
-  readRoute();
   initEvents();
-  render();
+
+  var sessaoInicial = db
+    ? db.auth.getSession().then(function (res) { return aplicarSessao(res.data ? res.data.session : null); }).catch(function () {})
+    : Promise.resolve();
+
+  var dadosProntos = sessaoInicial
+    .then(function () { return Promise.all([carregarImoveis(), carregarConfig()]); })
+    .then(function () {
+      readRoute();
+      render();
+    });
 
   window.addEventListener("popstate", function () {
     readRoute(); render(); window.scrollTo(0, 0);
@@ -1565,11 +1771,13 @@
     readRoute(); render(); window.scrollTo(0, 0);
   });
 
-  setTimeout(function () {
+  // A tela de carregamento sai quando a animação terminou E o catálogo já chegou.
+  var tempoMinimo = new Promise(function (r) { setTimeout(r, 1650); });
+  Promise.all([tempoMinimo, dadosProntos]).then(function () {
     var loader = document.getElementById("ptk-loader");
     if (!loader) return;
     loader.classList.add("ptk-loader-hidden");
     initMotion();
     setTimeout(function () { loader.remove(); }, 550);
-  }, 1650);
+  });
 })();
