@@ -57,8 +57,8 @@
 
   /* ============================== Backend (Supabase) ============================== */
 
-  var SUPABASE_URL = "https://gqbgdpadxedvomnxqelg.supabase.co";
-  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYmdkcGFkeGVkdm9tbnhxZWxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NjY5MTcsImV4cCI6MjEwNDQ0MjkxN30.TvTWNAYDd5Pd1tPgjVJtudGf0fntNzmz0BKdqPHM27k";
+  var SUPABASE_URL = "https://xqjordnujvtefmwzsakp.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_ItpI9AEdPjdp1KJWzGeLGA_h0ODRhk7";
 
   var db = (window.supabase && window.supabase.createClient)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -163,7 +163,8 @@
 
   function carregarImoveis() {
     if (!db) { state.props = SEED.slice(); state.offline = true; state.carregando = false; return Promise.resolve(); }
-    return db.from("properties").select("*").order("created_at", { ascending: false })
+    var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,created_at,updated_at";
+    return db.from("properties").select(state.isAdmin ? "*" : publicColumns).order("created_at", { ascending: false })
       .then(function (res) {
         if (res.error) throw res.error;
         state.props = (res.data || []).map(fromRow);
