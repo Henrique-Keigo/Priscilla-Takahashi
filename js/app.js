@@ -89,6 +89,7 @@
       obs: r.obs || "",
       photos: Array.isArray(r.photos) ? r.photos : [],
       coverIdx: Number(r.cover_idx) || 0,
+      deletedAt: r.deleted_at || null,
       createdAt: r.created_at ? new Date(r.created_at).getTime() : 0
     };
   }
@@ -102,6 +103,7 @@
       banheiros: Number(p.banheiros) || 0, vagas: Number(p.vagas) || 0,
       status: p.status || "rascunho", etiquetas: p.etiquetas || [], feats: p.feats || [],
       obs: p.obs || "", photos: p.photos || [], cover_idx: Number(p.coverIdx) || 0,
+      deleted_at: p.deletedAt || null,
       updated_at: new Date().toISOString()
     };
   }
@@ -116,6 +118,7 @@
     favs: [],
     fl: { loc: "", tipo: "", modo: "", quartos: "", suites: "", faixa: "", feats: [], sort: "rec", onlyFavs: false },
     props: [],
+    deletedProps: [],
     viewedIds: [],
     draft: null,
     dragFrom: null,
@@ -195,11 +198,13 @@
   function carregarImoveis() {
     var previous = state.props.slice();
     if (!db) { preserveCatalog(previous); state.carregando = false; return Promise.resolve(); }
-    var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,suites,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,created_at,updated_at";
+    var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,suites,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,deleted_at,created_at,updated_at";
     return db.from("properties").select(state.isAdmin ? "*" : publicColumns).order("created_at", { ascending: false })
       .then(function (res) {
         if (res.error) throw res.error;
-        state.props = (res.data || []).map(fromRow);
+        var loaded = (res.data || []).map(fromRow);
+        state.deletedProps = loaded.filter(function (p) { return !!p.deletedAt; });
+        state.props = loaded.filter(function (p) { return !p.deletedAt; });
         state.offline = false;
         state.catalogError = "";
         saveCatalogCache(state.props);
@@ -1221,7 +1226,7 @@
 
   function adminHTML() {
     if (!state.isAdmin) return loginHTML();
-    var tabs = [["dash", "Dashboard"], ["form", "Cadastro"], ["marca", "Marca-d'água"], ["conta", "Conta"]];
+    var tabs = [["dash", "Dashboard"], ["form", "Cadastro"], ["trash", "Lixeira (" + state.deletedProps.length + ")"], ["marca", "Marca-d'água"], ["conta", "Conta"]];
     var goHomeA = go("home");
     var sairA = A(function () { sair(); });
     var tabsHTML = tabs.map(function (t) {
@@ -1234,6 +1239,7 @@
     var body = "";
     if (state.adminTab === "dash") body = adminDashHTML();
     else if (state.adminTab === "form") body = adminFormHTML();
+    else if (state.adminTab === "trash") body = adminTrashHTML();
     else if (state.adminTab === "marca") body = adminMarcaHTML();
     else if (state.adminTab === "conta") body = adminContaHTML();
 
@@ -1287,14 +1293,14 @@
           .catch(function () { toast("Não foi possível duplicar agora"); });
       });
       var delA = A(function () {
-        if (!window.confirm("Excluir \"" + x.titulo + "\" definitivamente?")) return;
-        db.from("properties").delete().eq("id", x.id)
+        if (!window.confirm("Mover \"" + x.titulo + "\" para a lixeira? Ele sairá do site, mas poderá ser restaurado.")) return;
+        db.from("properties").update({ deleted_at: new Date().toISOString(), status: "rascunho", updated_at: new Date().toISOString() }).eq("id", x.id)
           .then(function (res) {
             if (res.error) throw res.error;
             return carregarImoveis();
           })
-          .then(function () { render(); toast("Imóvel excluído"); })
-          .catch(function () { toast("Não foi possível excluir agora"); });
+          .then(function () { render(); toast("Imóvel movido para a lixeira"); })
+          .catch(function () { toast("Não foi possível mover para a lixeira agora"); });
       });
       var tagClass = x.status === "ativo" ? "tag tag-accent" : x.status === "rascunho" ? "tag tag-outline" : "tag tag-neutral";
       return "<tr>" +
@@ -1306,7 +1312,7 @@
           '<button data-onclick="' + editA + '" class="btn btn-secondary" style="font-size:11.5px;padding:5px 10px">Editar</button>' +
           '<button data-onclick="' + toggleA + '" class="btn btn-secondary" style="font-size:11.5px;padding:5px 10px">' + (x.status === "ativo" ? "Despublicar" : "Publicar") + "</button>" +
           '<button data-onclick="' + dupA + '" class="btn btn-secondary" title="Duplicar" style="font-size:11.5px;padding:5px 9px">⧉</button>' +
-          '<button data-onclick="' + delA + '" class="btn btn-secondary" title="Excluir" style="font-size:11.5px;padding:5px 9px;color:var(--color-accent-700)">✕</button>' +
+          '<button data-onclick="' + delA + '" class="btn btn-secondary" title="Mover para a lixeira" aria-label="Mover ' + esc(x.titulo) + ' para a lixeira" style="font-size:11.5px;padding:5px 9px;color:var(--color-accent-700)">Lixeira</button>' +
         "</div></td>" +
       "</tr>";
     }).join("");
@@ -1328,6 +1334,51 @@
         "</div>" +
       "</div>"
     );
+  }
+
+  function adminTrashHTML() {
+    var items = state.deletedProps || [];
+    var rows = items.map(function (x) {
+      var restoreA = A(function () {
+        db.from("properties").update({ deleted_at: null, status: "rascunho", updated_at: new Date().toISOString() }).eq("id", x.id)
+          .then(function (res) {
+            if (res.error) throw res.error;
+            return carregarImoveis();
+          })
+          .then(function () { render(); toast("Imóvel restaurado como rascunho"); })
+          .catch(function () { toast("Não foi possível restaurar agora"); });
+      });
+      var deleteForeverA = A(function () {
+        var confirmation = window.prompt("Para apagar definitivamente \"" + x.titulo + "\", digite EXCLUIR.");
+        if (confirmation !== "EXCLUIR") {
+          if (confirmation !== null) toast("Exclusão cancelada: confirmação incorreta");
+          return;
+        }
+        db.from("properties").delete().eq("id", x.id)
+          .then(function (res) {
+            if (res.error) throw res.error;
+            return carregarImoveis();
+          })
+          .then(function () { render(); toast("Imóvel apagado definitivamente"); })
+          .catch(function () { toast("Não foi possível apagar definitivamente"); });
+      });
+      return "<tr>" +
+        '<td><div style="font-family:var(--font-heading);font-weight:500;font-size:13.5px">' + esc(x.titulo) + '</div><div style="font-size:11px;color:color-mix(in srgb,var(--color-text) 50%,transparent)">ref. ' + esc(refCurta(x.id)) + '</div></td>' +
+        '<td style="font-size:13px">' + esc(x.bairro || "—") + '</td>' +
+        '<td style="font-size:13px">' + esc(x.deletedAt ? new Date(x.deletedAt).toLocaleDateString("pt-BR") : "—") + '</td>' +
+        '<td><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">' +
+          '<button data-onclick="' + restoreA + '" class="btn btn-secondary" style="font-size:11.5px;padding:7px 11px">Restaurar como rascunho</button>' +
+          '<button data-onclick="' + deleteForeverA + '" class="btn btn-secondary" style="font-size:11.5px;padding:7px 11px;color:var(--color-accent-700)">Apagar definitivamente</button>' +
+        '</div></td></tr>';
+    }).join("");
+
+    return '<div>' +
+      '<div style="margin-bottom:26px"><h1 style="margin:0 0 8px;font-size:clamp(26px,3.2vw,40px);letter-spacing:-0.03em">Lixeira</h1>' +
+      '<p style="margin:0;max-width:680px;font-size:14px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Os imóveis daqui não aparecem no site. Restaure com segurança como rascunho ou apague definitivamente.</p></div>' +
+      (items.length
+        ? '<div style="overflow-x:auto"><table class="table"><caption class="sr-only">Imóveis na lixeira</caption><thead><tr><th>Imóvel</th><th>Bairro</th><th>Excluído em</th><th style="text-align:right">Ações</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+        : '<div style="background:var(--color-surface);padding:34px 24px;text-align:center"><p style="margin:0;font-family:var(--font-heading);font-size:18px">A lixeira está vazia.</p></div>') +
+    '</div>';
   }
 
   function editProp(id) {
