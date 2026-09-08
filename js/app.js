@@ -163,7 +163,7 @@
   }
 
   function carregarImoveis() {
-    if (!db) { state.props = SEED.slice(); state.offline = true; state.carregando = false; return Promise.resolve(); }
+    if (!db) { state.props = []; state.offline = true; state.carregando = false; return Promise.resolve(); }
     var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,suites,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,created_at,updated_at";
     return db.from("properties").select(state.isAdmin ? "*" : publicColumns).order("created_at", { ascending: false })
       .then(function (res) {
@@ -172,8 +172,8 @@
         state.offline = false;
       })
       .catch(function () {
-        // Sem conexão com o banco: mostra o catálogo de exemplo em vez de uma página vazia.
-        state.props = SEED.slice();
+        // Sem conexão com o banco, nunca mostramos imóveis de demonstração como se fossem reais.
+        state.props = [];
         state.offline = true;
       })
       .then(function () { state.carregando = false; });
