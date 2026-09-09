@@ -133,7 +133,9 @@
     conta: { nova: "", confirma: "", erro: "", carregando: false },
     carregando: true,
     offline: false,
-    catalogError: ""
+    catalogError: "",
+    bulkIds: [],
+    selectedPhotoPaths: []
   };
 
   var FAVS_KEY = "ptk.favs.v1";
@@ -1261,6 +1263,12 @@
   function adminDashHTML() {
     var rascunhos = state.props.filter(function (x) { return x.status === "rascunho"; }).length;
     var startNewA = A(function () { state.draft = blankDraft(); state.adminTab = "form"; render(); window.scrollTo(0, 0); });
+    var selectedCount = state.bulkIds.length;
+    var selectAllA = A(function (e) { state.bulkIds = e.target.checked ? state.props.map(function (p) { return p.id; }) : []; render(); });
+    var deleteSelectedA = A(function () {
+      if (!selectedCount || !window.confirm("Excluir " + selectedCount + " anúncio(s) e todas as fotos definitivamente?")) return;
+      deleteProperties(state.bulkIds).then(function () { render(); toast("Anúncios excluídos definitivamente"); }).catch(function (err) { toast(err.message || "Não foi possível excluir os anúncios"); });
+    });
 
     var counts = [["ativo", "Ativos"], ["vendido", "Vendidos"], ["alugado", "Alugados"], ["rascunho", "Rascunhos"]].map(function (kl) {
       var n = state.props.filter(function (x) { return x.status === kl[0]; }).length;
@@ -1292,19 +1300,17 @@
           .then(function () { render(); toast("Duplicado como rascunho"); })
           .catch(function () { toast("Não foi possível duplicar agora"); });
       });
+      var selected = state.bulkIds.indexOf(x.id) !== -1;
+      var selectA = A(function (e) { state.bulkIds = e.target.checked ? state.bulkIds.concat([x.id]) : state.bulkIds.filter(function (id) { return id !== x.id; }); render(); });
       var delA = A(function () {
-        if (!window.confirm("Mover \"" + x.titulo + "\" para a lixeira? Ele sairá do site, mas poderá ser restaurado.")) return;
-        db.from("properties").update({ deleted_at: new Date().toISOString(), status: "rascunho", updated_at: new Date().toISOString() }).eq("id", x.id)
-          .then(function (res) {
-            if (res.error) throw res.error;
-            return carregarImoveis();
-          })
-          .then(function () { render(); toast("Imóvel movido para a lixeira"); })
-          .catch(function () { toast("Não foi possível mover para a lixeira agora"); });
+        if (!window.confirm("Excluir \"" + x.titulo + "\" definitivamente?")) return;
+        deleteProperties([x.id])
+          .then(function () { render(); toast("Imóvel excluído"); })
+          .catch(function (err) { toast(err.message || "Não foi possível excluir agora"); });
       });
       var tagClass = x.status === "ativo" ? "tag tag-accent" : x.status === "rascunho" ? "tag tag-outline" : "tag tag-neutral";
       return "<tr>" +
-        '<td><div style="font-family:var(--font-heading);font-weight:500;font-size:13.5px">' + esc(x.titulo) + "</div><div style=\"font-size:11px;color:color-mix(in srgb,var(--color-text) 50%,transparent)\">" + esc(x.tipo) + " · " + (x.area || "—") + " m² · ref. " + esc(refCurta(x.id)) + "</div></td>" +
+        '<td style="width:32px"><input type="checkbox" aria-label="Selecionar ' + esc(x.titulo) + '" data-onchange="' + selectA + '"' + (selected ? " checked" : "") + '></td><td><div style="font-family:var(--font-heading);font-weight:500;font-size:13.5px">' + esc(x.titulo) + "</div><div style=\"font-size:11px;color:color-mix(in srgb,var(--color-text) 50%,transparent)\">" + esc(x.tipo) + " · " + (x.area || "—") + " m² · ref. " + esc(refCurta(x.id)) + "</div></td>" +
         '<td style="font-size:13px">' + esc(x.bairro) + "</td>" +
         '<td style="font-size:13px;font-variant-numeric:tabular-nums">' + esc(precoLabel(x)) + "</td>" +
         '<td><span class="' + tagClass + '">' + (STATUS_LABEL[x.status] || x.status) + "</span></td>" +
@@ -1328,9 +1334,10 @@
         '<div style="margin-top:44px">' +
           '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">' +
             '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent)">Seus imóveis</div>' +
-            '<span style="font-size:12px;color:color-mix(in srgb,var(--color-text) 50%,transparent)">' + state.props.length + " no total</span>" +
+            '<div style="display:flex;align-items:center;gap:12px"><span style="font-size:12px;color:color-mix(in srgb,var(--color-text) 50%,transparent)">' + state.props.length + " no total</span>" +
+            (selectedCount ? '<button data-onclick="' + deleteSelectedA + '" class="btn btn-secondary" style="font-size:12px;padding:7px 10px;color:var(--color-accent-700)">Excluir ' + selectedCount + " selecionado(s)</button>" : "") + "</div>" +
           "</div>" +
-          '<div style="overflow-x:auto"><table class="table"><thead><tr><th>Imóvel</th><th>Bairro</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
+          '<div style="overflow-x:auto"><table class="table"><thead><tr><th><input type="checkbox" aria-label="Selecionar todos" data-onchange="' + selectAllA + '"' + (state.props.length && selectedCount === state.props.length ? " checked" : "") + '></th><th>Imóvel</th><th>Bairro</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
         "</div>" +
       "</div>"
     );
@@ -1425,6 +1432,16 @@
 
     var photosHTML = "";
     if ((d2.photos || []).length) {
+      var deleteSelectedPhotosA = A(function () {
+        var chosen = (state.draft.photos || []).filter(function (p) { return state.selectedPhotoPaths.indexOf(p.path) !== -1; });
+        if (!chosen.length || !window.confirm("Excluir " + chosen.length + " foto(s) definitivamente?")) return;
+        deleteStorageFiles(chosen).then(function () {
+          state.draft.photos = state.draft.photos.filter(function (p) { return state.selectedPhotoPaths.indexOf(p.path) === -1; });
+          state.selectedPhotoPaths = [];
+          state.draft.coverIdx = Math.min(state.draft.coverIdx || 0, Math.max(0, state.draft.photos.length - 1));
+          return state.draft.id ? db.from("properties").update({ photos: state.draft.photos, cover_idx: state.draft.coverIdx, updated_at: new Date().toISOString() }).eq("id", state.draft.id) : Promise.resolve();
+        }).then(function () { render(); toast("Fotos excluídas definitivamente"); }).catch(function (err) { toast(err.message || "Não foi possível excluir as fotos"); });
+      });
       photosHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;margin-top:12px">' +
         d2.photos.map(function (ph, i) {
           var isCover = i === (d2.coverIdx || 0);
@@ -1445,18 +1462,26 @@
             var moved = list.splice(from, 1)[0];
             list.splice(i, 0, moved);
             state.draft.photos = list; state.dragFrom = null;
-            render();
+            if (state.draft.id) {
+              db.from("properties").update({ photos: list, cover_idx: state.draft.coverIdx || 0, updated_at: new Date().toISOString() }).eq("id", state.draft.id)
+                .then(function (res) { if (res.error) throw res.error; render(); toast("Ordem das fotos atualizada"); })
+                .catch(function (err) { toast(err.message || "Não foi possível ordenar as fotos"); });
+            } else render();
           });
           var dragEndA = A(function () { state.dragFrom = null; render(); });
+          var checked = state.selectedPhotoPaths.indexOf(ph.path) !== -1;
+          var selectPhotoA = A(function (e) { state.selectedPhotoPaths = e.target.checked ? state.selectedPhotoPaths.concat([ph.path]) : state.selectedPhotoPaths.filter(function (path) { return path !== ph.path; }); render(); });
           return '<div draggable="true" data-ondragstart="' + dragStartA + '" data-ondragover="' + dragOverA + '" data-ondrop="' + dropA + '" data-ondragend="' + dragEndA + '" style="position:relative;border:' + (isCover ? "2px solid var(--color-accent)" : "1px solid color-mix(in srgb,var(--color-text) 12%,transparent)") + ";background:var(--color-surface);cursor:grab" + '">' +
             '<div style="width:100%;height:96px;overflow:hidden">' + photoImg(ph.src) + "</div>" +
             (isCover ? '<span style="position:absolute;left:0;top:0;background:var(--color-accent);color:var(--color-bg);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;padding:4px 7px">Capa</span>' : "") +
+            '<label style="position:absolute;right:5px;top:5px;background:var(--color-bg);padding:4px;cursor:pointer"><input type="checkbox" aria-label="Selecionar foto" data-onchange="' + selectPhotoA + '"' + (checked ? " checked" : "") + '></label>' +
             '<div style="display:flex;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
               '<button data-onclick="' + setCoverA + '" class="btn" style="flex:1;font-size:10.5px;padding:6px 4px;justify-content:center">Capa</button>' +
               '<button data-onclick="' + removeA + '" class="btn" style="flex:0 0 34px;font-size:11px;padding:6px 0;justify-content:center;color:var(--color-accent-700);border-left:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">✕</button>' +
             "</div>" +
           "</div>";
-        }).join("") + "</div>";
+        }).join("") + "</div>" +
+        (state.selectedPhotoPaths.length ? '<button data-onclick="' + deleteSelectedPhotosA + '" class="btn btn-secondary" style="margin-top:12px;color:var(--color-accent-700)">Excluir ' + state.selectedPhotoPaths.length + " foto(s) selecionada(s)</button>" : "");
     }
 
     var featsHTML = FEATS.map(function (f) {
@@ -1582,6 +1607,19 @@
         var pub = db.storage.from(bucket).getPublicUrl(caminho);
         return { path: caminho, src: pub.data.publicUrl, name: file.name };
       });
+  }
+
+  // Hard delete: remove os arquivos do Storage e, em seguida, os registros do Postgres.
+  function deleteStorageFiles(photos) {
+    var paths = (photos || []).map(function (p) { return p.path; }).filter(Boolean);
+    return paths.length ? db.storage.from("property-photos").remove(paths).then(function (res) { if (res.error) throw res.error; }) : Promise.resolve();
+  }
+
+  function deleteProperties(ids) {
+    var selected = state.props.filter(function (p) { return ids.indexOf(p.id) !== -1; });
+    return Promise.all(selected.map(function (p) { return deleteStorageFiles(p.photos); }))
+      .then(function () { return db.from("properties").delete().in("id", ids); })
+      .then(function (res) { if (res.error) throw res.error; state.bulkIds = []; return carregarImoveis(); });
   }
 
   function onPhotos(e) {
