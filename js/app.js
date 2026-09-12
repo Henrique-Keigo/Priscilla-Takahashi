@@ -3,7 +3,7 @@
 
   /* ============================== Dados-base ============================== */
 
-  var BRAND = "Priscila Takahashi";
+  var BRAND = "Priscilla Takahashi";
   var CIDADE = "São José dos Campos";
   var CRECI = "CRECI/SP 214.508-F";
   var WHATSAPP = "+55 11 95314-9899";
@@ -580,9 +580,7 @@
       '<div style="position:sticky;top:0;z-index:60;background:var(--color-accent);border-bottom:1px solid #7d1839">' +
         '<div style="max-width:1440px;margin:0 auto;padding:20px clamp(18px,4vw,56px);display:flex;align-items:center;gap:28px;flex-wrap:wrap">' +
           '<a href="#" data-onclick="' + goHomeA + '" style="display:flex;align-items:center;gap:16px;margin-right:auto" title="' + esc(BRAND) + '">' +
-            '<img src="images/icone-chaves-branco.png" alt="" style="display:block;height:50px;width:auto">' +
-            '<span style="width:1px;height:44px;background:rgba(255,255,255,.34)"></span>' +
-            '<img src="images/logo-wordmark-branco.png" alt="' + esc(BRAND) + '" style="display:block;height:56px;width:auto">' +
+            '<img class="ptk-brand-logo" src="images/brand/logo_priscillatakahashi_secundario_branco.svg" alt="' + esc(BRAND) + '">' +
           "</a>" +
           '<nav style="display:flex;align-items:center;column-gap:22px;row-gap:10px;flex-wrap:wrap">' +
             '<a href="#" data-onclick="' + goCatA + '" style="font-size:13px;letter-spacing:.02em;color:' + navColor("catalogo") + '">Imóveis</a>' +
@@ -602,13 +600,12 @@
     var goCatA = go("catalogo"), goSobreA = go("sobre"), goServA = go("servicos"), goContA = go("contato"), goTermosA = go("termos");
     var wa = waLinkFor("Olá! Vi o site da " + BRAND + " e queria falar com você.");
     return (
-      '<div style="border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);background:var(--color-bg)">' +
+      '<div class="ptk-brand-footer" style="border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);background:var(--color-bg)">' +
         '<div style="max-width:1440px;margin:0 auto;padding:clamp(36px,4vw,60px) clamp(18px,4vw,56px)">' +
           '<div style="display:flex;flex-wrap:wrap;gap:36px;justify-content:space-between">' +
             '<div style="flex:1 1 260px">' +
               '<div style="display:flex;align-items:center;gap:16px">' +
-                '<img src="images/icone-chaves-vinho.png" alt="" style="display:block;height:56px;width:auto">' +
-                '<img src="images/logo-wordmark-rosa.png" alt="' + esc(BRAND) + '" style="display:block;height:64px;width:auto">' +
+                '<img class="ptk-footer-logo" src="images/brand/logo_priscillatakahashi_secundario_rosaavermelhado.svg" alt="' + esc(BRAND) + '">' +
               "</div>" +
               '<div style="margin-top:8px;font-size:12.5px;color:color-mix(in srgb,var(--color-text) 55%,transparent);max-width:34ch">Imóveis com projeto em ' + esc(CIDADE) + " e no Vale do Paraíba. " + esc(BRAND) + " — " + esc(CRECI) + ".</div>" +
             "</div>" +

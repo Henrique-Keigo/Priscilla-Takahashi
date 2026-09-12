@@ -45,3 +45,14 @@ O site não tem etapa de build: é só publicar os arquivos como estão.
 Cada push na branch `main` publica automaticamente. O `vercel.json` já cuida de URLs limpas e cache.
 
 Depois de publicar, vale adicionar o domínio do site em **Supabase → Authentication → URL Configuration**.
+
+
+## Identidade visual
+
+Aplicação do manual Priscilla Takahashi de setembro de 2026, fornecido em
+https://drive.google.com/drive/folders/1tV0gk1YXTyzKlbwnxbKfv6tFIEbKSSas
+
+- Brand para títulos; Mulish variável para texto e controles, servidas localmente.
+- Paleta oficial: vanilla `#FEF2ED`, rosa pálido `#E6C1C7`, rosa opaco `#CE7E8F`, rosa avermelhado `#A6214B`.
+- Logotipo secundário original em SVG no menu e rodapé; monograma no carregamento e favicon oficial.
+- Estampa rosa pálido no rodapé. Vetores originais preservados em `images/brand/`.
