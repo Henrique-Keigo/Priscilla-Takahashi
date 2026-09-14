@@ -649,9 +649,9 @@
     var novidades = novidadesDesdeUltimaVisita();
     var recomendados = recomendadosPerfil();
     var metodo = [
-      { n: "01", t: "Visita técnica", d: "Vamos ao imóvel antes de aceitar o anúncio." },
+      { n: "01", t: "Visita técnica", d: "" },
       { n: "02", t: "Fotografia própria", d: "Sessão dedicada, sem lente que distorce." },
-      { n: "03", t: "Texto honesto", d: "O que encanta e o que precisa de obra." }
+      { n: "03", t: "Avaliação conjunta", d: "" }
     ];
     var goCatA = go("catalogo"), goContA = go("contato");
     var wa = waLinkFor("Olá! Vi o site da " + BRAND + " e queria falar com você.");
@@ -668,7 +668,7 @@
                   '<span style="width:34px;height:2px;background:var(--color-accent)"></span>' +
                   '<span style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#f3f2f2">' + esc(CIDADE) + " · Vale do Paraíba</span>" +
                 "</div>" +
-                '<h1 style="margin:0;color:#f8f4f4;font-size:clamp(32px,4.8vw,64px);line-height:.98;letter-spacing:-0.03em;text-wrap:balance">Arquitetura<br>para se viver<br>devagar.</h1>' +
+                '<h1 style="margin:0;color:#f8f4f4;font-size:clamp(32px,4.8vw,64px);line-height:.98;letter-spacing:-0.03em;text-wrap:balance">Minha jornada<br>conecta-se ao seu<br>próximo capítulo.</h1>' +
                 '<p style="margin:22px 0 0;max-width:440px;font-size:15px;line-height:1.6;color:rgba(248,244,244,.78)">Casas, apartamentos e coberturas para diferentes momentos da vida, com informações claras e atendimento próximo.</p>' +
               "</div>" +
             "</div>" +
@@ -721,10 +721,10 @@
                 '<p style="max-width:44ch;font-size:15px;line-height:1.7;color:color-mix(in srgb,var(--color-text) 78%,transparent)">Conhecer o imóvel faz parte do nosso trabalho. A visita técnica, as fotografias e a conversa com quem vende ajudam a apresentar cada endereço com clareza, destacando suas qualidades e os pontos que merecem atenção.</p>' +
                 '<div class="ptk-method-steps">' +
                   metodo.map(function (m) {
-                    return '<div class="ptk-method-step">' +
+                    return '<div class="ptk-method-step" style="min-height:116px">' +
                       '<div style="font-family:var(--font-heading);font-weight:500;font-size:13px;color:var(--color-accent);margin-bottom:6px">' + m.n + "</div>" +
-                      '<div style="font-family:var(--font-heading);font-weight:500;font-size:15px;margin-bottom:4px">' + m.t + "</div>" +
-                      '<div style="font-size:12.5px;line-height:1.5;color:color-mix(in srgb,var(--color-text) 62%,transparent)">' + m.d + "</div>" +
+                      '<div style="font-family:var(--font-heading);font-weight:500;font-size:15px;margin-bottom:' + (m.d ? "4px" : "0") + '">' + m.t + "</div>" +
+                      (m.d ? '<div style="font-size:12.5px;line-height:1.5;color:color-mix(in srgb,var(--color-text) 62%,transparent)">' + m.d + "</div>" : "") +
                     "</div>";
                   }).join("") +
                 "</div>" +
@@ -738,7 +738,7 @@
 
         '<div style="background:var(--color-accent);color:var(--color-bg)">' +
           '<div style="max-width:1440px;margin:0 auto;padding:clamp(46px,6vw,86px) clamp(18px,4vw,56px);display:flex;flex-wrap:wrap;gap:40px;align-items:flex-end;justify-content:space-between">' +
-            '<h2 style="margin:0;font-size:clamp(30px,4.6vw,64px);line-height:.98;letter-spacing:-0.035em;max-width:16em">Conte o que você procura.<br>Nós procuramos.</h2>' +
+            '<h2 style="margin:0;font-size:clamp(30px,4.6vw,64px);line-height:.98;letter-spacing:-0.035em;max-width:16em">Te convido a participar da minha jornada.</h2>' +
             '<div style="display:flex;flex-direction:column;gap:12px;align-items:flex-start">' +
               '<a href="' + esc(wa) + '" target="_blank" class="btn" style="background:var(--color-bg);color:var(--color-text);padding:14px 22px;font-size:14px;justify-content:flex-start">' +
                 '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.3-.6L3 21l1.8-5A8.4 8.4 0 1 1 21 11.5z"></path></svg> Falar com a corretora no WhatsApp' +
@@ -1021,14 +1021,16 @@
       '<div style="max-width:1440px;margin:0 auto;padding:clamp(30px,4vw,64px) clamp(18px,4vw,56px) 90px">' +
         '<div style="width:100%;max-width:1100px">' +
           '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:16px">Sobre</div>' +
-          '<h1 style="margin:0;font-size:clamp(34px,5.2vw,72px);line-height:1.08;letter-spacing:-0.035em;text-wrap:balance">Seu próximo imóvel começa com uma boa conversa.</h1>' +
+          '<h1 style="margin:0;font-size:clamp(34px,5.2vw,72px);line-height:1.08;letter-spacing:-0.035em;text-wrap:balance">Imóveis fazem parte de histórias, e é sobre pessoas, escolhas e vida real que eu trabalho todos os dias.</h1>' +
         "</div>" +
         '<div style="height:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);margin:44px 0"></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:clamp(28px,4vw,64px)">' +
           '<div style="flex:1 1 420px">' +
-            '<p style="font-size:18px;line-height:1.6;max-width:56ch">Este escritório nasceu de uma inconformidade simples: imóveis bonitos sendo anunciados com fotos ruins e textos copiados. Trabalhamos no contrário disso.</p>' +
-            '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Atuamos em ' + esc(CIDADE) + ' e no Vale do Paraíba, aproximando pessoas de imóveis que combinam com seus planos. Nosso trabalho une conhecimento da região, atenção às suas necessidades e informações claras para acompanhar você na compra, venda ou locação.</p>' +
-            '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Para quem compra, isso significa nunca perder uma tarde numa visita que não fazia sentido. Para quem vende, significa um anúncio que atrai a pessoa certa em vez de dez curiosos.</p>' +
+            '<p style="font-size:18px;line-height:1.6;max-width:56ch">Sou Priscila Takahashi, corretora de imóveis, mãe, esposa e apaixonada por experiências. Acredito que um imóvel vai muito além de paredes e metragem. Ele é cenário de conquistas, encontros e novos começos.</p>' +
+            '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Minha jornada no mercado imobiliário nasceu do meu olhar atento às pessoas, ao lifestyle e aos detalhes que realmente importam. Ao longo dos anos, construí uma forma de trabalhar baseada na escuta, na confiança e na curadoria.</p>' +
+            '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Atuo principalmente em São José dos Campos e no Vale do Paraíba, com imóveis de alto padrão, sempre com discrição, atendimento personalizado e acesso a oportunidades exclusivas, inclusive off market.</p>' +
+            '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Mais do que apresentar opções, eu cuido de cada etapa — da busca à conquista — para que a sua experiência seja segura, leve e alinhada ao seu momento de vida.</p>' +
+            '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Porque, para mim, imóveis não são apenas um negócio: são pessoas, sonhos e histórias que merecem ser bem vividas.</p>' +
             '<div style="margin-top:36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + stats + "</div>" +
           "</div>" +
         "</div>" +
@@ -1041,19 +1043,15 @@
   function servicosHTML() {
     var servicos = [
       { n: "01", t: "Venda com acompanhamento", d: "Apresentamos seu imóvel com visita técnica, sessão de fotografia e descrição detalhada, além de um plano de divulgação combinado com você antes da publicação.", tags: ["Fotografia inclusa", "Texto autoral", "Plano de mídia"] },
-      { n: "02", t: "Locação anual e de temporada", d: "Cuidamos da triagem de candidatos, da vistoria de entrada e do contrato. Você recebe um relatório de cada visita, com o que agradou e o que travou a negociação.", tags: ["Triagem", "Vistoria", "Contrato"] },
-      { n: "03", t: "Avaliação de valor", d: "Estudo comparativo com transações reais do bairro nos últimos doze meses, não com anúncios. Entregue em PDF, em até cinco dias úteis.", tags: ["Comparativo real", "PDF", "5 dias"] },
-      { n: "04", t: "Busca dirigida", d: "Para quem procura algo que não está no mercado. Mapeamos o bairro, batemos na porta e negociamos direto com proprietários.", tags: ["Off-market", "Negociação direta"] }
+      { n: "02", t: "Avaliação de valor", d: "Estudo comparativo com transações reais do bairro nos últimos doze meses, não com anúncios.", tags: ["Comparativo real"] }
     ];
     var wa = waLinkFor("Olá! Vi o site da " + BRAND + " e queria falar sobre avaliação de imóvel.");
     var rows = servicos.map(function (s) {
-      return '<div style="display:flex;flex-wrap:wrap;gap:clamp(20px,4vw,56px);padding:36px 0;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
-        '<div style="flex:0 0 64px;font-family:var(--font-heading);font-weight:500;font-size:14px;color:var(--color-accent);font-variant-numeric:tabular-nums">' + s.n + "</div>" +
-        '<div style="flex:1 1 240px"><h3 style="margin:0;font-size:clamp(21px,2.4vw,30px);letter-spacing:-0.02em">' + esc(s.t) + "</h3></div>" +
-        '<div style="flex:1 1 340px">' +
-          '<p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:color-mix(in srgb,var(--color-text) 76%,transparent);max-width:52ch">' + esc(s.d) + "</p>" +
-          '<div style="display:flex;flex-wrap:wrap;gap:6px">' + s.tags.map(function (t) { return '<span class="tag tag-neutral">' + esc(t) + "</span>"; }).join("") + "</div>" +
-        "</div>" +
+      return '<div class="ptk-service-card">' +
+        '<div style="font-family:var(--font-heading);font-weight:500;font-size:14px;color:var(--color-accent);font-variant-numeric:tabular-nums">' + s.n + "</div>" +
+        '<h3 style="margin:18px 0 20px;font-size:clamp(23px,2.5vw,32px);letter-spacing:-0.02em">' + esc(s.t) + "</h3>" +
+        '<p style="margin:0;font-size:15px;line-height:1.7;color:color-mix(in srgb,var(--color-text) 76%,transparent);max-width:52ch">' + esc(s.d) + "</p>" +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:22px">' + s.tags.map(function (t) { return '<span class="tag tag-neutral">' + esc(t) + "</span>"; }).join("") + "</div>" +
       "</div>";
     }).join("");
 
@@ -1061,9 +1059,9 @@
       '<div style="max-width:1440px;margin:0 auto;padding:clamp(30px,4vw,64px) clamp(18px,4vw,56px) 90px">' +
         '<div style="max-width:22ch">' +
           '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:16px">Serviços</div>' +
-          '<h1 style="margin:0;font-size:clamp(34px,5.4vw,74px);line-height:.97;letter-spacing:-0.035em">O que fazemos, e como.</h1>' +
+          '<h1 style="margin:0;font-size:clamp(34px,5.4vw,74px);line-height:.97;letter-spacing:-0.035em">Meu olhar, minha curadoria, seu novo capítulo.</h1>' +
         "</div>" +
-        '<div style="margin-top:52px;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + rows + "</div>" +
+        '<div class="ptk-services-grid">' + rows + "</div>" +
         '<div style="margin-top:56px;background:var(--color-accent);color:var(--color-bg);padding:clamp(32px,4vw,56px);display:flex;flex-wrap:wrap;gap:28px;align-items:flex-end;justify-content:space-between">' +
           '<h2 style="margin:0;font-size:clamp(26px,3.6vw,46px);line-height:1;letter-spacing:-0.03em;max-width:18em">Quer avaliar<br>o seu imóvel?</h2>' +
           '<a href="' + esc(wa) + '" target="_blank" class="btn" style="background:var(--color-bg);color:var(--color-text);padding:14px 22px;justify-content:flex-start">Pedir avaliação gratuita</a>' +

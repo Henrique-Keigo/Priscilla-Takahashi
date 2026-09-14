@@ -207,6 +207,25 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
   .ptk-method-step { padding: 20px; }
 }
 
+.ptk-services-grid {
+  margin-top: 52px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.ptk-service-card {
+  min-width: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(26px, 3vw, 38px);
+  background: var(--color-surface);
+  border-top: 2px solid var(--color-accent-300);
+}
+@media (max-width: 720px) {
+  .ptk-services-grid { grid-template-columns: 1fr; }
+}
+
 /* Movimento leve, sem deslocar o layout ou alterar as cores das fotos. */
 .ptk-page-enter { animation: ptk-page-in .38s ease-out both; }
 .ptk-reveal {
