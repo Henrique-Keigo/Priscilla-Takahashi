@@ -1057,9 +1057,9 @@
 
     return (
       '<div style="max-width:1440px;margin:0 auto;padding:clamp(30px,4vw,64px) clamp(18px,4vw,56px) 90px">' +
-        '<div style="max-width:22ch">' +
+        '<div class="ptk-services-heading">' +
           '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:16px">Serviços</div>' +
-          '<h1 style="margin:0;font-size:clamp(34px,5.4vw,74px);line-height:.97;letter-spacing:-0.035em">Meu olhar, minha curadoria, seu novo capítulo.</h1>' +
+          '<h1>Meu olhar, minha curadoria, seu novo capítulo.</h1>' +
         "</div>" +
         '<div class="ptk-services-grid">' + rows + "</div>" +
         '<div style="margin-top:56px;background:var(--color-accent);color:var(--color-bg);padding:clamp(32px,4vw,56px);display:flex;flex-wrap:wrap;gap:28px;align-items:flex-end;justify-content:space-between">' +
