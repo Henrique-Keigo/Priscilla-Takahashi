@@ -207,6 +207,31 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
   .ptk-method-step { padding: 20px; }
 }
 
+.ptk-about-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+  gap: clamp(32px, 6vw, 88px);
+  align-items: stretch;
+}
+.ptk-about-copy { min-width: 0; }
+.ptk-about-copy > p:first-child { margin-top: 0; }
+.ptk-about-photo {
+  min-height: 520px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.ptk-about-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 32%;
+}
+@media (max-width: 820px) {
+  .ptk-about-layout { grid-template-columns: 1fr; }
+  .ptk-about-photo { min-height: 0; aspect-ratio: 4 / 5; }
+}
+
 .ptk-services-grid {
   margin-top: 52px;
   display: grid;

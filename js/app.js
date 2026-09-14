@@ -1024,16 +1024,17 @@
           '<h1 style="margin:0;font-size:clamp(34px,5.2vw,72px);line-height:1.08;letter-spacing:-0.035em;text-wrap:balance">Imóveis fazem parte de histórias, e é sobre pessoas, escolhas e vida real que eu trabalho todos os dias.</h1>' +
         "</div>" +
         '<div style="height:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);margin:44px 0"></div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:clamp(28px,4vw,64px)">' +
-          '<div style="flex:1 1 420px">' +
+        '<div class="ptk-about-layout">' +
+          '<div class="ptk-about-copy">' +
             '<p style="font-size:18px;line-height:1.6;max-width:56ch">Sou Priscila Takahashi, corretora de imóveis, mãe, esposa e apaixonada por experiências. Acredito que um imóvel vai muito além de paredes e metragem. Ele é cenário de conquistas, encontros e novos começos.</p>' +
             '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Minha jornada no mercado imobiliário nasceu do meu olhar atento às pessoas, ao lifestyle e aos detalhes que realmente importam. Ao longo dos anos, construí uma forma de trabalhar baseada na escuta, na confiança e na curadoria.</p>' +
             '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Atuo principalmente em São José dos Campos e no Vale do Paraíba, com imóveis de alto padrão, sempre com discrição, atendimento personalizado e acesso a oportunidades exclusivas, inclusive off market.</p>' +
             '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Mais do que apresentar opções, eu cuido de cada etapa — da busca à conquista — para que a sua experiência seja segura, leve e alinhada ao seu momento de vida.</p>' +
             '<p style="font-size:15px;line-height:1.72;max-width:60ch;color:color-mix(in srgb,var(--color-text) 72%,transparent)">Porque, para mim, imóveis não são apenas um negócio: são pessoas, sonhos e histórias que merecem ser bem vividas.</p>' +
-            '<div style="margin-top:36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + stats + "</div>" +
           "</div>" +
+          '<div class="ptk-about-photo"><img src="images/priscilla-takahashi.webp" alt="Priscila Takahashi" loading="lazy"></div>' +
         "</div>" +
+        '<div style="margin-top:36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:color-mix(in srgb,var(--color-text) 12%,transparent);border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' + stats + "</div>" +
       "</div>"
     );
   }
