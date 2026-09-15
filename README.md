@@ -7,7 +7,7 @@ A corretora publica os imóveis pelo painel administrativo e os clientes navegam
 
 Site estático (HTML, CSS e JavaScript sem framework) com backend no Supabase.
 
-- `index.html` — página única; a navegação acontece pelo endereço (`#catalogo`, `#sobre`, `#<id-do-imóvel>`)
+- `index.html` — página única; a navegação acontece pelo endereço (`#catalogo`, `#sobre`, `?imovel=<id-do-imóvel>`). Links antigos em `#<id-do-imóvel>` continuam válidos e são convertidos para o formato atual ao abrir.
 - `css/style.css` — estilos e tokens visuais da marca
 - `js/app.js` — toda a aplicação: estado, telas, painel administrativo e acesso ao banco
 - `images/` — logotipos e imagens fixas do site

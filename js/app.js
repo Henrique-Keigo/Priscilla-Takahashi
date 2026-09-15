@@ -22,6 +22,7 @@
   ];
 
   var STATUS_LABEL = { ativo: "Ativo", vendido: "Vendido", alugado: "Alugado", rascunho: "Rascunho" };
+  var PROPERTY_QUERY_KEY = "imovel";
 
   /* Dados fictícios antigos, mantidos fora da execução apenas como histórico de desenvolvimento.
   var SEED = [
@@ -347,9 +348,18 @@
 
   /* ============================== Navegação / lógica ============================== */
 
+  function propertyUrl(id) {
+    var url = new URL(location.href);
+    url.hash = "";
+    url.searchParams.set(PROPERTY_QUERY_KEY, id);
+    return url.toString();
+  }
+
   function readRoute() {
     var key;
-    try { key = decodeURIComponent(location.hash.slice(1)); }
+    try {
+      key = new URLSearchParams(location.search).get(PROPERTY_QUERY_KEY) || decodeURIComponent(location.hash.slice(1));
+    }
     catch (e) { key = "invalid"; }
     state.openId = null;
     state.galIdx = 0;
@@ -370,8 +380,17 @@
 
   function syncRoute() {
     var key = state.route === "imovel" ? state.openId : state.route === "home" ? "" : state.route;
-    var hash = key ? "#" + encodeURIComponent(key) : "";
-    if (location.hash !== hash) history.pushState(null, "", location.pathname + location.search + hash);
+    var url = new URL(location.href);
+    if (state.route === "imovel" && key) {
+      url.searchParams.set(PROPERTY_QUERY_KEY, key);
+      url.hash = "";
+    } else {
+      url.searchParams.delete(PROPERTY_QUERY_KEY);
+      url.hash = key ? "#" + encodeURIComponent(key) : "";
+    }
+    var next = url.pathname + url.search + url.hash;
+    var current = location.pathname + location.search + location.hash;
+    if (current !== next) history.pushState(null, "", next);
   }
 
   function go(route) {
@@ -900,7 +919,7 @@
     var goCatA = go("catalogo");
     var favA = toggleFav(p.id);
     var shareA = A(function () {
-      var url = location.href.split("#")[0] + "#" + p.id;
+      var url = propertyUrl(p.id);
       function manualCopy() { window.prompt("Copie o link deste imóvel:", url); }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function () {
