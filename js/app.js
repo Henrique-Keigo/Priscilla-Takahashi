@@ -42,9 +42,33 @@
 
   /* ============================== Utilidades ============================== */
 
+  function parseMoneyBR(value) {
+    if (typeof value === "number") return isFinite(value) ? value : 0;
+    var text = String(value == null ? "" : value).trim();
+    if (!text) return 0;
+    var dotCount = (text.match(/\./g) || []).length;
+    var normalized = text.indexOf(",") !== -1
+      ? text.replace(/\./g, "").replace(",", ".")
+      : dotCount > 1 ? text.replace(/\./g, "") : text;
+    var parsed = Number(normalized.replace(/[^0-9.-]/g, ""));
+    return isFinite(parsed) ? parsed : 0;
+  }
+
+  function formatMoneyBRInput(value) {
+    var amount = parseMoneyBR(value);
+    if (!amount) return "";
+    return amount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function maskMoneyBRInput(value) {
+    var digits = String(value == null ? "" : value).replace(/\D/g, "");
+    if (!digits) return "";
+    return (Number(digits) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   function moneyBR(n) {
-    var v = Number(n);
-    if (!v || isNaN(v)) return "Valor a combinar";
+    var v = parseMoneyBR(n);
+    if (!v) return "Valor a combinar";
     return "R$ " + v.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
   }
 
@@ -431,6 +455,18 @@
 
   function blankDraft() {
     return { id: "", titulo: "", desc: "", desc2: "", tipo: "Casa", modo: "Venda", preco: "", cep: "", endereco: "", bairro: "", area: "", quartos: "", suites: "", banheiros: "", vagas: "", status: "rascunho", etiquetas: "", obs: "", feats: [], photos: [], coverIdx: 0 };
+  }
+
+  function neighborhoodSuggestions() {
+    var seen = Object.create(null);
+    return state.props.map(function (p) { return String(p.bairro || "").replace(/\s+/g, " ").trim(); })
+      .filter(function (bairro) {
+        var key = bairro.toLocaleLowerCase("pt-BR");
+        if (!bairro || seen[key]) return false;
+        seen[key] = true;
+        return true;
+      })
+      .sort(function (a, b) { return a.localeCompare(b, "pt-BR", { sensitivity: "base" }); });
   }
 
   var cepLookupTimer = null;
@@ -1388,7 +1424,7 @@
     var p = state.props.filter(function (x) { return x.id === id; })[0];
     if (!p) return;
     state.draft = Object.assign({}, p, {
-      preco: String(p.preco || ""), area: String(p.area || ""), quartos: String(p.quartos || ""), suites: String(p.suites || ""),
+      preco: formatMoneyBRInput(p.preco), area: String(p.area || ""), quartos: String(p.quartos || ""), suites: String(p.suites || ""),
       banheiros: String(p.banheiros || ""), vagas: String(p.vagas || ""),
       etiquetas: (p.etiquetas || []).join(", "), feats: (p.feats || []).slice(), photos: (p.photos || []).slice()
     });
@@ -1417,6 +1453,16 @@
     });
   }
 
+  function setDraftMoneyField(key, livePreview) {
+    return A(function (e) {
+      var masked = maskMoneyBRInput(e.target.value);
+      state.draft = state.draft || blankDraft();
+      state.draft[key] = masked;
+      e.target.value = masked;
+      if (livePreview) syncFormPreview();
+    });
+  }
+
   function adminFormHTML() {
     var d2 = state.draft || blankDraft();
     var cancelA = A(function () { state.draft = null; state.adminTab = "dash"; render(); });
@@ -1425,6 +1471,7 @@
     var onPhotosA = A(onPhotos);
 
     var tipoOpts = TIPOS.map(function (t) { return '<option value="' + esc(t) + '"' + (d2.tipo === t ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("");
+    var bairroOptions = neighborhoodSuggestions().map(function (bairro) { return '<option value="' + esc(bairro) + '"></option>'; }).join("");
 
     var photosHTML = "";
     if ((d2.photos || []).length) {
@@ -1528,7 +1575,7 @@
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px">' +
                   '<div class="field"><label>Tipo</label><select class="input" data-onchange="' + setDraftField("tipo", true) + '">' + tipoOpts + "</select></div>" +
                   '<div class="field"><label>Finalidade</label><select class="input" data-onchange="' + setDraftField("modo", true) + '"><option value="Venda"' + (d2.modo === "Venda" ? " selected" : "") + ">Venda</option><option value=\"Aluguel\"" + (d2.modo === "Aluguel" ? " selected" : "") + ">Aluguel</option></select></div>" +
-                  '<div class="field"><label>Valor (R$)</label><input class="input" data-oninput="' + setDraftField("preco", true) + '" value="' + esc(d2.preco) + '" placeholder="1290000"></div>' +
+                  '<div class="field"><label>Valor (R$)</label><input class="input" inputmode="decimal" data-oninput="' + setDraftMoneyField("preco", true) + '" value="' + esc(d2.preco) + '" placeholder="1.290.000,00"></div>' +
                 "</div>" +
               "</div>" +
             "</div>" +
@@ -1541,7 +1588,7 @@
                 "</div>" +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">' +
                   '<div class="field"><label>Endereço / referência</label><input class="input" data-oninput="' + setDraftField("endereco", false) + '" value="' + esc(d2.endereco) + '" placeholder="Rua das Andorinhas, 240"></div>' +
-                  '<div class="field"><label>Bairro</label><input class="input" data-oninput="' + setDraftField("bairro", true) + '" value="' + esc(d2.bairro) + '" placeholder="Urbanova"></div>' +
+                  '<div class="field"><label>Bairro</label><input class="input" list="admin-bairros" data-oninput="' + setDraftField("bairro", true) + '" value="' + esc(d2.bairro) + '" placeholder="Urbanova"><datalist id="admin-bairros">' + bairroOptions + "</datalist></div>" +
                 "</div>" +
                 '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:14px">' +
                   '<div class="field"><label>Área (m²)</label><input class="input" data-oninput="' + setDraftField("area", true) + '" value="' + esc(d2.area) + '" placeholder="210"></div>' +
@@ -1637,9 +1684,9 @@
     var d = state.draft || blankDraft();
     var rec = toRow(Object.assign({}, d, {
       titulo: d.titulo || "Imóvel sem título",
-      preco: Number(String(d.preco).replace(/\D/g, "")) || 0,
+      preco: parseMoneyBR(d.preco),
       etiquetas: String(d.etiquetas || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean),
-      bairro: d.bairro || "A definir",
+      bairro: String(d.bairro || "").trim() || "A definir",
       status: status
     }));
     var salvar = d.id
