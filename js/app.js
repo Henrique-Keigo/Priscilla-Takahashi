@@ -913,7 +913,7 @@
     if (!p) return "";
     var isFav = state.favs.indexOf(p.id) !== -1;
     var gal = galleryOf(p);
-    var wa = waLinkFor("Olá! Tenho interesse no imóvel " + p.titulo + " (ref. " + refCurta(p.id) + ").");
+    var wa = waLinkFor("Olá! Tenho interesse no imóvel " + p.titulo + " (ref. " + refCurta(p.id) + ").\n\n" + propertyUrl(p.id));
     var mapLink = "https://www.google.com/maps/search/" + encodeURIComponent(p.endereco + ", " + p.bairro + ", " + CIDADE);
 
     var goCatA = go("catalogo");
