@@ -114,6 +114,7 @@
       obs: r.obs || "",
       photos: Array.isArray(r.photos) ? r.photos : [],
       coverIdx: Number(r.cover_idx) || 0,
+      watermark: r.watermark && typeof r.watermark === "object" ? r.watermark : null,
       deletedAt: r.deleted_at || null,
       createdAt: r.created_at ? new Date(r.created_at).getTime() : 0
     };
@@ -128,6 +129,7 @@
       banheiros: Number(p.banheiros) || 0, vagas: Number(p.vagas) || 0,
       status: p.status || "rascunho", etiquetas: p.etiquetas || [], feats: p.feats || [],
       obs: p.obs || "", photos: p.photos || [], cover_idx: Number(p.coverIdx) || 0,
+      watermark: p.watermark || null,
       deleted_at: p.deletedAt || null,
       updated_at: new Date().toISOString()
     };
@@ -225,7 +227,7 @@
   function carregarImoveis() {
     var previous = state.props.slice();
     if (!db) { preserveCatalog(previous); state.carregando = false; return Promise.resolve(); }
-    var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,suites,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,deleted_at,created_at,updated_at";
+    var publicColumns = "id,titulo,descricao,descricao2,tipo,modo,preco,cep,endereco,bairro,area,quartos,suites,banheiros,vagas,status,etiquetas,feats,photos,cover_idx,watermark,deleted_at,created_at,updated_at";
     return db.from("properties").select(state.isAdmin ? "*" : publicColumns).order("created_at", { ascending: false })
       .then(function (res) {
         if (res.error) throw res.error;
@@ -473,7 +475,7 @@
   }
 
   function blankDraft() {
-    return { id: "", titulo: "", desc: "", desc2: "", tipo: "Casa", modo: "Venda", preco: "", cep: "", endereco: "", bairro: "", area: "", quartos: "", suites: "", banheiros: "", vagas: "", status: "rascunho", etiquetas: "", obs: "", feats: [], photos: [], coverIdx: 0 };
+    return { id: "", titulo: "", desc: "", desc2: "", tipo: "Casa", modo: "Venda", preco: "", cep: "", endereco: "", bairro: "", area: "", quartos: "", suites: "", banheiros: "", vagas: "", status: "rascunho", etiquetas: "", obs: "", feats: [], photos: [], coverIdx: 0, watermark: null };
   }
 
   function neighborhoodSuggestions() {
@@ -525,9 +527,9 @@
     return '<img src="' + esc(src) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block;' + (extraStyle || "") + '">';
   }
 
-  function wmOverlayHTML(scaleFactor) {
-    var w = state.wm;
-    if (!w.src || !w.on) return "";
+  function wmOverlayHTML(scaleFactor, property) {
+    var w = property ? property.watermark : state.wm;
+    if (!w || !w.src || !w.on) return "";
     var pos = {
       center: "left:50%;top:50%;transform:translate(-50%,-50%)",
       "bottom-right": "right:4%;bottom:5%",
@@ -555,7 +557,7 @@
       '<div class="ptk-card" data-motion-key="card-' + esc(p.id) + '" style="background:var(--color-bg);padding-bottom:' + (opts.pad || "22px") + '">' +
         '<div class="ptk-card-media" style="position:relative;width:100%;aspect-ratio:' + aspect + ';overflow:hidden;background:var(--color-surface)">' +
           '<div class="grayscale" style="position:absolute;inset:0">' + (cover ? photoImg(cover) : slotPh(p.bairro)) + "</div>" +
-          wmOverlayHTML(1) +
+          wmOverlayHTML(1, p) +
           '<div style="position:absolute;left:0;top:0;display:flex;gap:2px;pointer-events:none">' +
             '<span style="background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-weight:500;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px">' + esc(p.modo) + "</span>" +
             (p.etiquetas && p.etiquetas.length ? '<span style="background:var(--color-text);color:var(--color-bg);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px">' + esc(p.etiquetas[0]) + "</span>" : "") +
@@ -989,7 +991,7 @@
 
         '<div style="max-width:1440px;margin:0 auto;padding:18px clamp(18px,4vw,56px) 0">' +
           '<div style="position:relative;width:100%;aspect-ratio:16/9;min-height:300px;overflow:hidden;background:var(--color-surface)">' +
-            slides + wmOverlayHTML(1) +
+            slides + wmOverlayHTML(1, p) +
             '<button data-onclick="' + prevA + '" title="Foto anterior" class="gal-nav" style="position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:5;width:54px;height:72px;border:0;background:rgba(32,30,29,.72);color:#f8f4f4;display:grid;place-items:center;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m15 5-7 7 7 7"></path></svg></button>' +
             '<button data-onclick="' + nextA + '" title="Próxima foto" class="gal-nav" style="position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:5;width:54px;height:72px;border:0;background:rgba(32,30,29,.72);color:#f8f4f4;display:grid;place-items:center;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m9 5 7 7-7 7"></path></svg></button>' +
             '<div style="position:absolute;right:0;bottom:0;z-index:5;background:var(--color-text);color:var(--color-bg);font-family:var(--font-heading);font-weight:500;font-size:12px;letter-spacing:.1em;padding:9px 14px;font-variant-numeric:tabular-nums">' + String(state.galIdx + 1).padStart(2, "0") + " / " + String(gal.length).padStart(2, "0") + "</div>" +
@@ -1482,6 +1484,19 @@
     });
   }
 
+  function setDraftWatermark(e) {
+    state.draft = state.draft || blankDraft();
+    state.draft.watermark = e.target.checked ? {
+      src: state.wm.src,
+      name: state.wm.name,
+      on: true,
+      op: state.wm.op,
+      scale: state.wm.scale,
+      pos: state.wm.pos
+    } : null;
+    render();
+  }
+
   function adminFormHTML() {
     var d2 = state.draft || blankDraft();
     var cancelA = A(function () { state.draft = null; state.adminTab = "dash"; render(); });
@@ -1634,6 +1649,7 @@
                   return '<option value="' + s + '"' + (d2.status === s ? " selected" : "") + ">" + label + "</option>";
                 }).join("") +
               "</select></div>" +
+              '<label class="radio" style="align-items:flex-start;margin-bottom:14px"><input type="checkbox" ' + (d2.watermark ? "checked" : "") + ' data-onchange="' + A(setDraftWatermark) + '"' + (!state.wm.src && !d2.watermark ? " disabled" : "") + '><span class="dot" style="margin-top:2px"></span><span><strong style="display:block;font-family:var(--font-heading);font-size:13px;font-weight:500">Aplicar marca d\'água neste imóvel</strong><small style="display:block;margin-top:4px;font-size:11.5px;line-height:1.45;color:color-mix(in srgb,var(--color-text) 55%,transparent)">' + (d2.watermark ? "Esta marca fica salva neste anúncio mesmo se a configuração geral mudar." : state.wm.src ? "A marca atual será salva somente neste anúncio." : "Envie primeiro a imagem na aba Marca d\'água.") + "</small></span></label>" +
               '<div class="field"><label>Etiquetas (separe por vírgula)</label><input class="input" data-oninput="' + setDraftField("etiquetas", false) + '" value="' + esc(d2.etiquetas) + '" placeholder="Exclusivo, Aceita permuta"></div>' +
             "</div>" +
             '<div style="border:1px solid color-mix(in srgb,var(--color-text) 14%,transparent);padding:20px;background:var(--color-surface)">' +
@@ -1759,7 +1775,6 @@
     var w = state.wm;
     var onWmA = A(onWm);
     var removeWmA = A(function () { state.wm = Object.assign({}, state.wm, { src: "", name: "" }); salvarConfigWm(); render(); toast("Marca-d'água removida"); });
-    var onToggleA = A(function (e) { state.wm.on = e.target.checked; salvarConfigWm(); render(); });
     var opInputA = A(function (e) { state.wm.op = Number(e.target.value); syncWmPreview(); });
     var opChangeA = A(function (e) { state.wm.op = Number(e.target.value); salvarConfigWm(); syncWmPreview(); });
     var scaleInputA = A(function (e) { state.wm.scale = Number(e.target.value); syncWmPreview(); });
@@ -1794,7 +1809,7 @@
         '<div style="padding-bottom:20px;border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)">' +
           '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent);margin-bottom:10px">Marca-d\'água</div>' +
           '<h1 style="margin:0;font-size:clamp(24px,3vw,36px);letter-spacing:-0.03em">Sua marca sobre as fotos publicadas</h1>' +
-          '<p style="margin:8px 0 0;max-width:60ch;font-size:13.5px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Envie um PNG, JPG ou JPEG. Aplicamos automaticamente nas fotos do site público, centralizada e discreta. As originais continuam intactas aqui no painel.</p>' +
+          '<p style="margin:8px 0 0;max-width:60ch;font-size:13.5px;color:color-mix(in srgb,var(--color-text) 60%,transparent)">Envie um PNG, JPG ou JPEG e ajuste a aparência. No cadastro de cada imóvel, você escolhe se essa marca será aplicada ou não. As originais continuam intactas aqui no painel.</p>' +
         "</div>" +
         '<div style="display:flex;flex-wrap:wrap;gap:clamp(24px,3vw,48px);padding-top:32px;align-items:flex-start">' +
           '<div style="flex:1 1 320px;display:grid;gap:20px">' +
@@ -1802,8 +1817,7 @@
               '<div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-bottom:16px">Arquivo</div>' + fileBlock +
             "</div>" +
             '<div style="border:1px solid color-mix(in srgb,var(--color-text) 14%,transparent);padding:22px">' +
-              '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px"><span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent)">Ajuste fino</span>' +
-                '<label class="radio"><input type="checkbox" ' + (w.on ? "checked" : "") + ' data-onchange="' + onToggleA + '"><span class="dot"></span>Aplicar</label></div>' +
+              '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px"><span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 52%,transparent)">Ajuste fino</span></div>' +
               '<div class="field" style="margin-bottom:16px"><label>Opacidade — <span id="wm-op-label">' + w.op + '%</span></label><input type="range" min="5" max="60" step="1" value="' + w.op + '" data-oninput="' + opInputA + '" data-onchange="' + opChangeA + '" style="width:100%;accent-color:var(--color-accent)"></div>' +
               '<div class="field" style="margin-bottom:16px"><label>Tamanho — <span id="wm-scale-label">' + w.scale + '%</span> da largura</label><input type="range" min="10" max="70" step="1" value="' + w.scale + '" data-oninput="' + scaleInputA + '" data-onchange="' + scaleChangeA + '" style="width:100%;accent-color:var(--color-accent)"></div>' +
               '<div class="field"><label>Posição</label><select class="input" data-onchange="' + posA + '">' +
@@ -1820,7 +1834,7 @@
               wmSimOverlayHTML() +
             "</div>" +
             '<div style="display:flex;gap:14px;margin-top:14px;flex-wrap:wrap">' +
-              '<div style="flex:1 1 180px;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding-top:12px"><div style="font-family:var(--font-heading);font-weight:500;font-size:13px;margin-bottom:4px">Site público</div><div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 58%,transparent)">Todas as fotos recebem a marca automaticamente.</div></div>' +
+              '<div style="flex:1 1 180px;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding-top:12px"><div style="font-family:var(--font-heading);font-weight:500;font-size:13px;margin-bottom:4px">Site público</div><div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 58%,transparent)">A marca aparece apenas nos imóveis em que você ativar essa opção.</div></div>' +
               '<div style="flex:1 1 180px;border-top:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);padding-top:12px"><div style="font-family:var(--font-heading);font-weight:500;font-size:13px;margin-bottom:4px">Painel</div><div style="font-size:12px;color:color-mix(in srgb,var(--color-text) 58%,transparent)">Miniaturas do cadastro mostram sempre o original.</div></div>' +
             "</div>" +
           "</div>" +
