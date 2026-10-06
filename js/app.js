@@ -58,8 +58,8 @@
 
   /* ============================== Backend (Supabase) ============================== */
 
-  var SUPABASE_URL = "https://xqjordnujvtefmwzsakp.supabase.co";
-  var SUPABASE_ANON_KEY = "sb_publishable_ItpI9AEdPjdp1KJWzGeLGA_h0ODRhk7";
+  var SUPABASE_URL = "https://gqbgdpadxedvomnxqelg.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_ggYstdPd0qYEiSTSHwMOAg_fuVph4SA";
 
   var db = (window.supabase && window.supabase.createClient)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
